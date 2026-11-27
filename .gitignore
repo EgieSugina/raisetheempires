@@ -13,3 +13,7 @@
 .coverage
 coverage.xml
 test-results.xml
+.venv/
+__pycache__/
+/.claude/
+/.codegraph/

@@ -13,7 +13,10 @@
 	<link rel="stylesheet" href="css/tooltiplink.css"/>
 	<link rel="stylesheet" href="css/zbar.css"/>
 	<!-- JS -->
-	<script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+	<!-- Self-hosted Ruffle 0.8.0 (templates/js/ruffle/). Pinned on purpose: the
+	     old unpkg URL pulled whatever was newest at page load, needed internet,
+	     and ran third-party code from a CDN. -->
+	<script src="js/ruffle/ruffle.js"></script>
 	<script src="js/flash.js"></script>
 	<script src="js/session.js"></script>
 	<script src="js/empires.js"></script>
@@ -216,7 +219,10 @@
 													player.load({ // https://ruffle.rs/js-docs/master/interfaces/Config.URLLoadOptions.html
 														url: "/files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338.swf",
 														backgroundColor: "#333399",
-														allowScriptAccess: false,
+														// Must stay true: the game calls ExternalInterface.addCallback
+														// during init (MessageOfTheDayManager). With this false, Ruffle
+														// throws Error #2067 and startup stops at a blank blue screen.
+														allowScriptAccess: true,
 														allowFullscreen: true,
 														quality: "high",
 														//autoplay: true,
