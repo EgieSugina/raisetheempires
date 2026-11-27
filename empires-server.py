@@ -26,7 +26,8 @@ if os.name == 'nt':
     os.system('color')
 
 from save_engine import db, save_database_uri, log_path, lookup_objects_save_by_position, get_all_sessions, \
-    store_session, validate_save, InvalidSaveException, set_crash_log, my_games_path, install_path, base_path
+    store_session, validate_save, InvalidSaveException, set_crash_log, my_games_path, install_path, base_path, \
+    get_dict, get_saves
 from save_migration import migrate, is_0_08a_preview
 from builtins import print
 from time import sleep
@@ -425,6 +426,69 @@ def remove_quest(value):
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
+
+
+def admin_quest_buckets():
+    """Split every known quest into not-started, in-progress and completed."""
+    quests = session.get('quests') or []
+    incomplete = [e["name"] for e in quests if not e.get("complete")]
+    complete = [e["name"] for e in quests if e.get("complete")]
+    return (
+        {q: v for q, v in quest_titles.items() if q not in complete and q not in incomplete},
+        {q: v for q, v in quest_titles.items() if q in incomplete},
+        {q: v for q, v in quest_titles.items() if q in complete},
+    )
+
+
+def admin_status():
+    """A small snapshot of the current session, for the admin page to poll."""
+    user_object = session.get('user_object')
+    player = get_dict(session, "user_object", "userInfo", "player")
+    world = get_dict(session, "user_object", "userInfo", "world")
+    quests = session.get('quests') or []
+    return {
+        "has_session": user_object is not None,
+        "save_valid": validate_save(session, False),
+        "world_name": get_dict(session, "user_object", "userInfo").get("worldName"),
+        "uid": player.get("uid"),
+        "level": player.get("level"),
+        "xp": player.get("xp"),
+        "coins": get_dict(session, "user_object", "userInfo", "world", "resources").get("coins"),
+        "cash": player.get("cash"),
+        "population": session.get('population'),
+        "quests_complete": len([e for e in quests if e.get("complete")]),
+        "quests_incomplete": len([e for e in quests if not e.get("complete")]),
+        "save_version": session.get('save_version'),
+        "save_count": len(get_sessions_dropdown_info(get_saves())),
+    }
+
+
+@app.route("/admin")
+def admin_page():
+    # Deliberately unauthenticated for now: it only exposes the debug routes
+    # that already answer without a login, and the banner says so.
+    quest_names, incomplete_quest_names, complete_quest_names = admin_quest_buckets()
+    return render_template(
+        "admin.html",
+        version=version,
+        release_date=release_date,
+        listen_host=settings.host,
+        listen_port=settings.port,
+        swf_base=request.host_url,
+        debug_mode=settings.debug,
+        compression=settings.compression,
+        caching=settings.caching,
+        saves=get_sessions_dropdown_info(get_saves()),
+        quest_names=quest_names,
+        incomplete_quest_names=incomplete_quest_names,
+        complete_quest_names=complete_quest_names,
+    )
+
+
+@app.route("/admin/status.json")
+def admin_status_json():
+    return Response(json.dumps(admin_status(), default=lambda o: '<not serializable>'),
+                    mimetype="application/json")
 
 
 @app.route("/save-editor", methods=['GET'])
@@ -2860,7 +2924,9 @@ def delete_save(message):
 def server_error_page(error):
     if settings.crash_log:
         text = editor.edit(filename=os.path.join(log_path(), "log.txt"))
-    return 'It went wrong'
+    # Without the explicit code Flask answers 500s with "200 OK", which hides
+    # server errors from anything checking the status (the admin page did).
+    return 'It went wrong', 500
 
 
 def enc_hook(obj):
