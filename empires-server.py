@@ -130,6 +130,15 @@ MAX_ADMIN_ID = 123
 
 @app.route("/")
 def index():
+    # The game is the home page now. With no save loaded but saves on disk, go
+    # to the picker first, otherwise opening "/" would quietly start a new one.
+    if 'user_object' not in session and get_saves():
+        return make_response(redirect('/login.html'))
+    return ruffle()
+
+
+@app.route("/index-classic.html")
+def index_classic():
     return render_template("index.html", version=version, release_date=release_date)
 
 
@@ -151,23 +160,27 @@ def home():
                            motd=get_motd()
                            )
 
+def game_page_context():
+    """Template values shared by every page that embeds the game."""
+    saves = get_saves()
+    return dict(time=datetime.now().timestamp(), zid=str(get_zid()),
+                version=version,
+                allies=json.dumps(get_allies_friend(saves),
+                                  default=lambda o: '<not serializable>', sort_keys=False, indent=2),
+                app_friends=json.dumps(get_allies_id(saves)),
+                worldname=session['user_object']["userInfo"]["worldName"] if 'user_object' in session else "Emperor",
+                picture=get_avatar_pic(),
+                dropdown_items=get_sessions_dropdown_info(saves),
+                motd=get_motd())
+
+
 @app.route("/ruffle.html")
 def ruffle():
     print("ruffle")
     if not validate_save(session, True):
         print("Invalid save game")
         return make_response(redirect('/save-editor')) #todo disable save editor toggle?
-    saves = get_saves()
-    return render_template("ruffle.html", time=datetime.now().timestamp(), zid=str(get_zid()),
-                           version=version,
-                           allies=json.dumps(get_allies_friend(saves),
-                                             default=lambda o: '<not serializable>', sort_keys=False, indent=2),
-                           app_friends=json.dumps(get_allies_id(saves)),
-                           worldname=session['user_object']["userInfo"]["worldName"] if 'user_object' in session else "Emperor",
-                           picture=get_avatar_pic(),
-                           dropdown_items=get_sessions_dropdown_info(saves),
-                           motd=get_motd()
-                           )
+    return render_template("ruffle.html", **game_page_context())
 
 def get_allies_friend(saves):
     return [ally["friend"] for ally in allies.values()
@@ -187,6 +200,22 @@ def get_allies_id(saves):
 def get_allies_info():
     return [ally["info"] for ally in allies.values() if ally["info"] and ally.get("neighbor")]+ get_sessions_info(
         get_saves())
+
+
+@app.route("/ruffle-classic.html")
+def ruffle_classic():
+    """The pre-rework game page, with the Facebook chrome and menu bar."""
+    if not validate_save(session, True):
+        return make_response(redirect('/save-editor'))
+    return render_template("ruffle-classic.html", **game_page_context())
+
+
+@app.route("/home-classic.html")
+def home_classic():
+    """The pre-rework debug home page."""
+    if not validate_save(session, True):
+        return make_response(redirect('/save-editor'))
+    return render_template("home-classic.html", **game_page_context())
 
 
 @app.route("/nodebug.html")
