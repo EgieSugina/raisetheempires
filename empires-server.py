@@ -26,7 +26,8 @@ if os.name == 'nt':
     os.system('color')
 
 from save_engine import db, save_database_uri, log_path, lookup_objects_save_by_position, get_all_sessions, \
-    store_session, validate_save, InvalidSaveException, set_crash_log, my_games_path, install_path, base_path
+    store_session, validate_save, InvalidSaveException, set_crash_log, my_games_path, install_path, base_path, \
+    get_dict, get_saves
 from save_migration import migrate, is_0_08a_preview
 from builtins import print
 from time import sleep
@@ -43,6 +44,7 @@ from pyamf import remoting
 import pyamf
 
 import mod_engine
+import swf_patch
 from battle_engine import battle_complete_response, spawn_fleet, next_campaign_response, assign_consumable_response, \
     get_active_island_by_map, set_active_island_by_map, format_player_fleet, \
     cancel_unstarted_invasions, register_fleetname_fleet, get_last_fleet_name, is_shielded, decode_unit_count_list, \
@@ -426,6 +428,69 @@ def remove_quest(value):
         return ("Nope! You don't have a game session yet", 403)
 
 
+def admin_quest_buckets():
+    """Split every known quest into not-started, in-progress and completed."""
+    quests = session.get('quests') or []
+    incomplete = [e["name"] for e in quests if not e.get("complete")]
+    complete = [e["name"] for e in quests if e.get("complete")]
+    return (
+        {q: v for q, v in quest_titles.items() if q not in complete and q not in incomplete},
+        {q: v for q, v in quest_titles.items() if q in incomplete},
+        {q: v for q, v in quest_titles.items() if q in complete},
+    )
+
+
+def admin_status():
+    """A small snapshot of the current session, for the admin page to poll."""
+    user_object = session.get('user_object')
+    player = get_dict(session, "user_object", "userInfo", "player")
+    world = get_dict(session, "user_object", "userInfo", "world")
+    quests = session.get('quests') or []
+    return {
+        "has_session": user_object is not None,
+        "save_valid": validate_save(session, False),
+        "world_name": get_dict(session, "user_object", "userInfo").get("worldName"),
+        "uid": player.get("uid"),
+        "level": player.get("level"),
+        "xp": player.get("xp"),
+        "coins": get_dict(session, "user_object", "userInfo", "world", "resources").get("coins"),
+        "cash": player.get("cash"),
+        "population": session.get('population'),
+        "quests_complete": len([e for e in quests if e.get("complete")]),
+        "quests_incomplete": len([e for e in quests if not e.get("complete")]),
+        "save_version": session.get('save_version'),
+        "save_count": len(get_sessions_dropdown_info(get_saves())),
+    }
+
+
+@app.route("/admin")
+def admin_page():
+    # Deliberately unauthenticated for now: it only exposes the debug routes
+    # that already answer without a login, and the banner says so.
+    quest_names, incomplete_quest_names, complete_quest_names = admin_quest_buckets()
+    return render_template(
+        "admin.html",
+        version=version,
+        release_date=release_date,
+        listen_host=settings.host,
+        listen_port=settings.port,
+        swf_base=request.host_url,
+        debug_mode=settings.debug,
+        compression=settings.compression,
+        caching=settings.caching,
+        saves=get_sessions_dropdown_info(get_saves()),
+        quest_names=quest_names,
+        incomplete_quest_names=incomplete_quest_names,
+        complete_quest_names=complete_quest_names,
+    )
+
+
+@app.route("/admin/status.json")
+def admin_status_json():
+    return Response(json.dumps(admin_status(), default=lambda o: '<not serializable>'),
+                    mimetype="application/json")
+
+
 @app.route("/save-editor", methods=['GET'])
 def save_editor():
     backups = []
@@ -504,15 +569,39 @@ def format_backup_message(backup):
 
 
 @app.route("/127.0.0.1record_stats.php", methods=['GET', 'POST'])
+@app.route("/record_stats.php", methods=['GET', 'POST'])
 def record_stats():
     return ('', 204)
 
 
+GAME_SWF = "ZGame.109338_tracer2.swf"  # regular one
+# GAME_SWF = "ZGame.109338.swf"
+# GAME_SWF = "ZGame.109338_tracer2a.swf"  # with extra debug logging
+
+_patched_swf_cache = {}
+
+
 @app.route("/files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338.swf")
 def flashFile():
-    # return send_from_directory_mod("assets", "ZGame.109338.swf")
-    return send_from_directory_mod("assets", "ZGame.109338_tracer2.swf")  # regular one
-    # return send_from_directory_mod("assets", "ZGame.109338_tracer2a.swf")  # with extra debug logging
+    # Ruffle's NetConnection only speaks Flash Remoting to absolute http(s)
+    # URLs, so rewrite the SWF's BASE_PATH to this server's own address. See
+    # swf_patch for the details. The file on disk is left untouched; on any
+    # unexpected shape we serve it unmodified, exactly as before.
+    base_url = request.host_url  # e.g. "http://127.0.0.1:5005/"
+    if base_url not in _patched_swf_cache:
+        swf_path = os.path.join(base_path(), "assets", GAME_SWF)
+        try:
+            with open(swf_path, "rb") as swf_file:
+                _patched_swf_cache[base_url] = swf_patch.patch_base_path(swf_file.read(), base_url)
+            print("Patched SWF BASE_PATH ->", base_url)
+        except (OSError, swf_patch.SwfPatchError) as error:
+            print("WARNING: serving the SWF unpatched:", error)
+            _patched_swf_cache[base_url] = None
+
+    patched = _patched_swf_cache[base_url]
+    if patched is None:
+        return send_from_directory_mod("assets", GAME_SWF)
+    return Response(patched, mimetype="application/x-shockwave-flash")
 
 
 @app.route("/gameSettings.xml")
@@ -525,12 +614,14 @@ def game_settings_file():
 
 
 @app.route("/127.0.0.1en_US.xml")
+@app.route("/en_US.xml")
 def en_us_file():
     # return send_from_directory_mod("assets/32995", "en_US.xml")
     return send_from_directory_mod("assets/29oct2012", "en_US.xml")
 
 
 @app.route("/127.0.0.1questSettings.xml")
+@app.route("/questSettings.xml")
 def quest_settings_file():
     return send_from_directory_mod("assets/29oct2012", "questSettings_with_fixes.xml")
 
@@ -766,7 +857,21 @@ def send_from_directory_mod(directory, filename, **options):
     return mod_engine.mod.get(mod_path)() if mod_path in mod_engine.mod else send_from_directory(absolute_directory, filename, **options)
 
 
+def amf_batch(batch):
+    """Return the request batch as a list.
+
+    Flash Player sends the AS3 Array as a strict AMF0 array, which pyamf decodes
+    to a list. Ruffle serializes the same Array as an ECMA array, which decodes
+    to a dict keyed by index, so iterating it yields ints instead of requests.
+    Accept both.
+    """
+    if isinstance(batch, dict):
+        return [batch[key] for key in sorted(batch, key=lambda k: int(k))]
+    return batch
+
+
 @app.route('/files/empire-s.assets.zgncdn.com/assets/109338/127.0.0.1flashservices/gateway.php', methods=['POST'])
+@app.route('/flashservices/gateway.php', methods=['POST'])
 def post_gateway():
     print("Gateway:")
     print(repr(request))
@@ -778,7 +883,7 @@ def post_gateway():
     # print(resp_msg.bodies[0])
 
     resps = []
-    for reqq in resp_msg.bodies[0][1].body[1]:
+    for reqq in amf_batch(resp_msg.bodies[0][1].body[1]):
         if reqq.functionName == 'UserService.initUser':
             try:
                 resps.append(user_response())
@@ -2819,7 +2924,9 @@ def delete_save(message):
 def server_error_page(error):
     if settings.crash_log:
         text = editor.edit(filename=os.path.join(log_path(), "log.txt"))
-    return 'It went wrong'
+    # Without the explicit code Flask answers 500s with "200 OK", which hides
+    # server errors from anything checking the status (the admin page did).
+    return 'It went wrong', 500
 
 
 def enc_hook(obj):

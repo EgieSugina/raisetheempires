@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Admin Console</title>
+	<link rel="shortcut icon" href="img/icon.png"/>
+	<link rel="icon" type="image/png" href="img/icon.png"/>
+	<style>
+		:root {
+			--bg: #f4f5f7;
+			--panel: #ffffff;
+			--ink: #1d2129;
+			--muted: #6a7078;
+			--line: #dcdfe4;
+			--accent: #3b5998;
+			--good: #2f7a3e;
+			--warn: #8a5a00;
+			--bad: #a32020;
+			--warn-bg: #fff4d6;
+			--code-bg: #f0f1f3;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			:root:not([data-theme="light"]) {
+				--bg: #16181c;
+				--panel: #1e2126;
+				--ink: #e6e8eb;
+				--muted: #9aa1aa;
+				--line: #343941;
+				--accent: #7a9ad6;
+				--good: #6cc083;
+				--warn: #e0b355;
+				--bad: #e07070;
+				--warn-bg: #3a2f14;
+				--code-bg: #15171a;
+			}
+		}
+
+		:root[data-theme="dark"] {
+			--bg: #16181c;
+			--panel: #1e2126;
+			--ink: #e6e8eb;
+			--muted: #9aa1aa;
+			--line: #343941;
+			--accent: #7a9ad6;
+			--good: #6cc083;
+			--warn: #e0b355;
+			--bad: #e07070;
+			--warn-bg: #3a2f14;
+			--code-bg: #15171a;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			background: var(--bg);
+			color: var(--ink);
+			font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		}
+
+		.wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+
+		header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+		header.top h1 { font-size: 22px; margin: 0; }
+		header.top .sub { color: var(--muted); font-size: 13px; }
+
+		.banner {
+			background: var(--warn-bg);
+			border: 1px solid var(--line);
+			border-left: 4px solid var(--warn);
+			border-radius: 6px;
+			padding: 10px 14px;
+			margin: 16px 0 24px;
+			font-size: 13px;
+		}
+
+		.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+
+		.card {
+			background: var(--panel);
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			padding: 16px 18px;
+		}
+		.card h2 {
+			font-size: 13px;
+			text-transform: uppercase;
+			letter-spacing: .06em;
+			color: var(--muted);
+			margin: 0 0 12px;
+			font-weight: 600;
+		}
+
+		table.kv { width: 100%; border-collapse: collapse; }
+		table.kv th, table.kv td { text-align: left; padding: 5px 0; vertical-align: top; font-weight: normal; }
+		table.kv th { color: var(--muted); width: 45%; }
+		table.kv td { font-variant-numeric: tabular-nums; word-break: break-word; }
+
+		.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); }
+		.pill.ok { color: var(--good); border-color: var(--good); }
+		.pill.no { color: var(--bad); border-color: var(--bad); }
+
+		button, .btn {
+			font: inherit;
+			padding: 7px 13px;
+			border-radius: 6px;
+			border: 1px solid var(--line);
+			background: var(--panel);
+			color: var(--ink);
+			cursor: pointer;
+			text-decoration: none;
+			display: inline-block;
+		}
+		button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
+		button.danger:hover { border-color: var(--bad); color: var(--bad); }
+
+		.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+		.row + .row { margin-top: 10px; }
+
+		input, select {
+			font: inherit;
+			padding: 6px 9px;
+			border-radius: 6px;
+			border: 1px solid var(--line);
+			background: var(--bg);
+			color: var(--ink);
+			min-width: 0;
+		}
+		input.grow { flex: 1 1 140px; }
+		input.narrow { width: 90px; flex: 0 0 auto; }
+		select.grow { flex: 1 1 200px; max-width: 100%; }
+		label.lbl { color: var(--muted); font-size: 12px; }
+
+		#log {
+			background: var(--code-bg);
+			border: 1px solid var(--line);
+			border-radius: 6px;
+			padding: 10px 12px;
+			height: 190px;
+			overflow: auto;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+			font-size: 12px;
+			white-space: pre-wrap;
+			margin: 0;
+		}
+		#log .ok { color: var(--good); }
+		#log .err { color: var(--bad); }
+		#log .t { color: var(--muted); }
+
+		.links { display: flex; flex-wrap: wrap; gap: 8px; }
+
+		.saves { width: 100%; border-collapse: collapse; font-size: 13px; }
+		.saves th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: 6px 8px 6px 0; }
+		.saves td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+		.saves tr:last-child td { border-bottom: 0; }
+
+		.hint { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+		.full { grid-column: 1 / -1; }
+	</style>
+</head>
+<body>
+<div class="wrap">
+
+	<header class="top">
+		<h1>Admin Console</h1>
+		<span class="sub">Raise the Empires {{ version }} &middot; {{ release_date }}</span>
+	</header>
+
+	<div class="banner">
+		<strong>No authentication.</strong> Every control here is open to anyone who can reach this server.
+		That is fine on <code>127.0.0.1</code>; do not run with <code>--host 0.0.0.0</code> on a shared network.
+		Each action writes a backup first, so the save editor can roll it back.
+	</div>
+
+	<div class="grid">
+
+		<section class="card">
+			<h2>Session</h2>
+			<table class="kv" id="status-table">
+				<tr><th>Game session</th><td id="st-session">&hellip;</td></tr>
+				<tr><th>Save valid</th><td id="st-valid">&hellip;</td></tr>
+				<tr><th>World</th><td id="st-world">&hellip;</td></tr>
+				<tr><th>uid</th><td id="st-uid">&hellip;</td></tr>
+				<tr><th>Level / XP</th><td id="st-level">&hellip;</td></tr>
+				<tr><th>Coins</th><td id="st-coins">&hellip;</td></tr>
+				<tr><th>Cash</th><td id="st-cash">&hellip;</td></tr>
+				<tr><th>Population</th><td id="st-pop">&hellip;</td></tr>
+				<tr><th>Quests done / open</th><td id="st-quests">&hellip;</td></tr>
+				<tr><th>Save version</th><td id="st-saveversion">&hellip;</td></tr>
+			</table>
+			<p class="hint">Refreshes every 5s. A session appears once you have opened the game and picked a save.</p>
+		</section>
+
+		<section class="card">
+			<h2>Server</h2>
+			<table class="kv">
+				<tr><th>Listening on</th><td>{{ listen_host }}:{{ listen_port }}</td></tr>
+				<tr><th>SWF BASE_PATH</th><td>{{ swf_base }}</td></tr>
+				<tr><th>Debug mode</th><td>{{ 'on' if debug_mode else 'off' }}</td></tr>
+				<tr><th>Compression</th><td>{{ 'on' if compression else 'off' }}</td></tr>
+				<tr><th>Caching</th><td>{{ 'on' if caching else 'off' }}</td></tr>
+				<tr><th>Saves in database</th><td id="st-saves">{{ saves | length }}</td></tr>
+			</table>
+			<h2 style="margin-top:16px">Open</h2>
+			<div class="links">
+				<a class="btn" href="/ruffle.html" target="_blank">Game (Ruffle)</a>
+				<a class="btn" href="/nodebug.html" target="_blank">Game (Flash)</a>
+				<a class="btn" href="/home.html" target="_blank">home.html</a>
+				<a class="btn" href="/login.html" target="_blank">Pick save</a>
+				<a class="btn" href="/save-editor" target="_blank">Save editor</a>
+				<a class="btn" href="/list_session" target="_blank">list_session</a>
+				<a class="btn" href="/language_editor" target="_blank">Language editor</a>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2>Cheats</h2>
+			<div class="row">
+				<button data-post="/gazillionaire">+10 000 cash</button>
+				<button data-post="/deprogress">Deprogress campaign</button>
+			</div>
+			<div class="row">
+				<label class="lbl">Seed W</label>
+				<input id="seed-w" class="narrow" type="number" value="1" />
+				<label class="lbl">Z</label>
+				<input id="seed-z" class="narrow" type="number" value="1" />
+				<button id="seed-go">Set seed</button>
+			</div>
+			<div class="row">
+				<button class="danger" id="wipe">Wipe session</button>
+				<span class="hint" style="margin:0">Logs out and clears the current save from the session.</span>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2>Quests</h2>
+			<div class="row">
+				<select id="quest-available" class="grow">
+					<option value="">Not started &mdash; {{ quest_names | length }}</option>
+					{% for name, title in quest_names.items() %}
+					<option value="{{ name }}">{{ title }} ({{ name }})</option>
+					{% endfor %}
+				</select>
+				<button data-quest="unlock_quest" data-from="quest-available">Unlock</button>
+			</div>
+			<div class="row">
+				<select id="quest-open" class="grow">
+					<option value="">In progress &mdash; {{ incomplete_quest_names | length }}</option>
+					{% for name, title in incomplete_quest_names.items() %}
+					<option value="{{ name }}">{{ title }} ({{ name }})</option>
+					{% endfor %}
+				</select>
+				<button data-quest="complete_quest" data-from="quest-open">Complete</button>
+				<button class="danger" data-quest="remove_quest" data-from="quest-open">Remove</button>
+			</div>
+			<div class="row">
+				<select id="quest-done" class="grow">
+					<option value="">Completed &mdash; {{ complete_quest_names | length }}</option>
+					{% for name, title in complete_quest_names.items() %}
+					<option value="{{ name }}">{{ title }} ({{ name }})</option>
+					{% endfor %}
+				</select>
+				<button class="danger" data-quest="remove_quest" data-from="quest-done">Remove</button>
+			</div>
+			<p class="hint">Quest lists come from the save as it was when this page loaded. Reload after changing them.</p>
+		</section>
+
+		<section class="card">
+			<h2>Patch save value</h2>
+			<div class="row">
+				<input id="patch-path" class="grow" placeholder="user_object/userInfo/player/level" style="flex-basis:100%" />
+			</div>
+			<div class="row">
+				<select id="patch-kind">
+					<option value="int">int</option>
+					<option value="string">string</option>
+					<option value="none">none</option>
+					<option value="empty-dict">empty dict</option>
+					<option value="empty-list">empty list</option>
+				</select>
+				<input id="patch-value" class="grow" placeholder="value" />
+				<button id="patch-go">Apply</button>
+			</div>
+			<p class="hint">Path is slash separated from the session root, so it usually starts with
+				<code>user_object</code> &mdash; e.g. <code>user_object/userInfo/world/resources/coins</code>.
+				<code>saved</code> and <code>original_save_version</code> are refused by the server.
+				Backed up before each change.</p>
+		</section>
+
+		<section class="card full">
+			<h2>Saves in database</h2>
+			{% if saves %}
+			<table class="saves">
+				<tr><th>uid</th><th>World</th><th>Level</th><th>XP</th><th>Session id</th></tr>
+				{% for save in saves %}
+				<tr>
+					<td>{{ save.uid }}</td>
+					<td>{{ save.world_name }}</td>
+					<td>{{ save.level }}</td>
+					<td>{{ save.xp }}</td>
+					<td><code>{{ save.session_id }}</code></td>
+				</tr>
+				{% endfor %}
+			</table>
+			{% else %}
+			<p class="hint" style="margin:0">No valid saves yet. Open the game and create one.</p>
+			{% endif %}
+		</section>
+
+		<section class="card full">
+			<h2>Activity</h2>
+			<pre id="log">ready.</pre>
+		</section>
+
+	</div>
+</div>
+
+<script>
+	var logEl = document.getElementById('log');
+
+	function log(message, cls) {
+		var time = new Date().toLocaleTimeString();
+		var line = document.createElement('span');
+		line.className = cls || '';
+		line.textContent = message;
+		var stamp = document.createElement('span');
+		stamp.className = 't';
+		stamp.textContent = '\n[' + time + '] ';
+		logEl.appendChild(stamp);
+		logEl.appendChild(line);
+		logEl.scrollTop = logEl.scrollHeight;
+	}
+
+	function post(url) {
+		log('POST ' + url + ' ...');
+		return fetch(url, {method: 'POST', redirect: 'follow'})
+			.then(function (res) {
+				if (res.ok) {
+					log('  ' + res.status + ' ok', 'ok');
+				} else {
+					log('  ' + res.status + ' ' + res.statusText, 'err');
+				}
+				refresh();
+				return res;
+			})
+			.catch(function (err) {
+				log('  failed: ' + err, 'err');
+			});
+	}
+
+	document.querySelectorAll('button[data-post]').forEach(function (btn) {
+		btn.addEventListener('click', function () { post(btn.dataset.post); });
+	});
+
+	document.querySelectorAll('button[data-quest]').forEach(function (btn) {
+		btn.addEventListener('click', function () {
+			var select = document.getElementById(btn.dataset.from);
+			var name = select.value;
+			if (!name) { log('  pick a quest first', 'err'); return; }
+			if (btn.dataset.quest === 'remove_quest' && !confirm('Remove quest ' + name + '?')) return;
+			post('/' + btn.dataset.quest + '/' + encodeURIComponent(name));
+		});
+	});
+
+	document.getElementById('seed-go').addEventListener('click', function () {
+		var w = parseInt(document.getElementById('seed-w').value, 10);
+		var z = parseInt(document.getElementById('seed-z').value, 10);
+		if (isNaN(w) || isNaN(z)) { log('  seed needs two integers', 'err'); return; }
+		post('/seed/w/' + w + '/z/' + z);
+	});
+
+	document.getElementById('wipe').addEventListener('click', function () {
+		if (!confirm('Wipe the current session? The save stays in the database.')) return;
+		post('/wipe_session');
+	});
+
+	document.getElementById('patch-go').addEventListener('click', function () {
+		var path = document.getElementById('patch-path').value.trim().replace(/^\/+|\/+$/g, '');
+		var kind = document.getElementById('patch-kind').value;
+		var value = document.getElementById('patch-value').value;
+		if (!path) { log('  path is required', 'err'); return; }
+		var url = '/patch/' + path.split('/').map(encodeURIComponent).join('/') + '/' + kind;
+		if (kind === 'int') {
+			var n = parseInt(value, 10);
+			if (isNaN(n)) { log('  int needs a number', 'err'); return; }
+			url += '/' + n;
+		} else if (kind === 'string') {
+			url += '/' + encodeURIComponent(value);
+		}
+		post(url);
+	});
+
+	function set(id, text) {
+		document.getElementById(id).textContent = text;
+	}
+
+	function pill(id, truthy, yes, no) {
+		var el = document.getElementById(id);
+		el.innerHTML = '';
+		var span = document.createElement('span');
+		span.className = 'pill ' + (truthy ? 'ok' : 'no');
+		span.textContent = truthy ? yes : no;
+		el.appendChild(span);
+	}
+
+	function refresh() {
+		return fetch('/admin/status.json', {cache: 'no-store'})
+			.then(function (res) { return res.json(); })
+			.then(function (s) {
+				pill('st-session', s.has_session, 'active', 'none');
+				pill('st-valid', s.save_valid, 'valid', 'invalid');
+				set('st-world', s.world_name === null ? '-' : s.world_name);
+				set('st-uid', s.uid === null ? '-' : s.uid);
+				set('st-level', s.level === null ? '-' : s.level + ' / ' + s.xp);
+				set('st-coins', s.coins === null ? '-' : s.coins);
+				set('st-cash', s.cash === null ? '-' : s.cash);
+				set('st-pop', s.population === null ? '-' : s.population);
+				set('st-quests', s.quests_complete + ' / ' + s.quests_incomplete);
+				set('st-saveversion', s.save_version === null ? '-' : s.save_version);
+				set('st-saves', s.save_count);
+			})
+			.catch(function (err) { log('status failed: ' + err, 'err'); });
+	}
+
+	refresh();
+	setInterval(refresh, 5000);
+</script>
+</body>
+</html>
