@@ -502,8 +502,10 @@ def save_editor():
         backup_count += 1
     print("Backups present", backup_count)
 
-    incomplete_quests = [e["name"] for e in session['quests'] if e["complete"] == False]
-    complete_quests = [e["name"] for e in session['quests'] if e["complete"]]
+    # No save loaded yet means no quests; the rest of the page renders fine.
+    quests = session.get('quests') or []
+    incomplete_quests = [e["name"] for e in quests if e["complete"] == False]
+    complete_quests = [e["name"] for e in quests if e["complete"]]
 
     return render_template("save-editor.html", savegame=json.dumps(
         {
