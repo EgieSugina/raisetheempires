@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Create an empire &middot; Empires &amp; Allies</title>
+	<link rel="shortcut icon" href="img/icon.png"/>
+	<link rel="icon" type="image/png" href="img/icon.png"/>
+	<link rel="stylesheet" href="css/account.css"/>
+</head>
+<body>
+	<div class="card">
+		<img class="logo" src="img/logo.png" alt="Empires &amp; Allies"/>
+		<h1>Create an empire</h1>
+		<p class="sub">Pick a name for your island and claim it.</p>
+
+		{% if switched %}
+		<div class="msg ok">Signed out of the save this browser was holding. Register away.</div>
+		{% endif %}
+		{% if error %}
+		<div class="msg error">{{ error }}</div>
+		{% endif %}
+
+		<form method="post" action="/register.html" autocomplete="on">
+			<div class="field">
+				<label for="username">Username</label>
+				<input id="username" name="username" value="{{ username | default('') }}"
+				       autocomplete="username" autofocus required/>
+			</div>
+			<p class="hint">3&ndash;20 characters: letters, digits, dot, dash or underscore.</p>
+			<div class="field">
+				<label for="password">Password</label>
+				<input id="password" name="password" type="password"
+				       autocomplete="new-password" required/>
+			</div>
+			<p class="hint">At least 6 characters. There is no password reset on this server.</p>
+			<div class="field">
+				<label for="confirm">Repeat password</label>
+				<input id="confirm" name="confirm" type="password"
+				       autocomplete="new-password" required/>
+			</div>
+			<div class="field">
+				<label for="island_name">Island name</label>
+				<input id="island_name" name="island_name" value="{{ island_name | default('') }}"
+				       placeholder="Rising Empire" maxlength="30" required/>
+			</div>
+			<button type="submit">Create empire</button>
+		</form>
+
+		<p class="alt">Already have an account? <a href="/login.html">Sign in</a></p>
+		<p class="foot">Raise the Empires {{ version | default("") }}</p>
+	</div>
+</body>
+</html>

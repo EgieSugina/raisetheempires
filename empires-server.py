@@ -45,6 +45,7 @@ import pyamf
 
 import mod_engine
 import swf_patch
+import auth_engine
 from battle_engine import battle_complete_response, spawn_fleet, next_campaign_response, assign_consumable_response, \
     get_active_island_by_map, set_active_island_by_map, format_player_fleet, \
     cancel_unstarted_invasions, register_fleetname_fleet, get_last_fleet_name, is_shielded, decode_unit_count_list, \
@@ -671,10 +672,76 @@ def friends_page():
     saves = get_saves()
     return render_template("friends.html", version=version, release_date=release_date, dropdown_items=get_sessions_dropdown_info(saves), zid=str(get_zid()))
 
-@app.route("/login.html")
+ACCOUNT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2
+
+
+@app.route("/login.html", methods=['GET', 'POST'])
 def login_page():
+    if request.method == 'GET':
+        return render_template("login.html", version=version, release_date=release_date,
+                               registered=request.args.get("registered"))
+
+    account, error = auth_engine.check_credentials(request.form.get("username"),
+                                                   request.form.get("password"))
+    if error:
+        return render_template("login.html", version=version, release_date=release_date,
+                               error=error, username=request.form.get("username", "")), 401
+
+    response = make_response(redirect('/'))
+    cookie = account.cookie_value
+    if cookie:
+        # Restoring the cookie restores the save it is keyed by.
+        response.set_cookie(app.config.get("SESSION_COOKIE_NAME", "session"), cookie,
+                            max_age=ACCOUNT_COOKIE_MAX_AGE, httponly=False, samesite='Lax')
+    print("Login:", account.username)
+    return response
+
+
+@app.route("/register.html", methods=['GET', 'POST'])
+def register_page():
+    if request.method == 'GET':
+        return render_template("register.html", version=version, release_date=release_date,
+                               switched=request.args.get("switched"))
+
+    username = request.form.get("username", "")
+    island_name = request.form.get("island_name", "")
+    error = auth_engine.validate_registration(username, request.form.get("password"),
+                                              request.form.get("confirm"), island_name)
+    if error:
+        return render_template("register.html", version=version, release_date=release_date,
+                               error=error, username=username, island_name=island_name), 400
+
+    if 'user_object' in session:
+        # This browser already holds somebody's save. Writing the new empire
+        # into the same cookie would overwrite it, so drop the cookie and let
+        # them register again with a clean one.
+        response = make_response(redirect('/register.html?switched=1'))
+        response.delete_cookie(app.config.get("SESSION_COOKIE_NAME", "session"))
+        return response
+
+    account = auth_engine.create_account(username, request.form.get("password"), island_name)
+    # The save itself is built by user_response() on the first game request;
+    # it reads this name so the new empire is the player's, not a default.
+    session['new_world_name'] = account.island_name
+    session['account_id'] = account.id
+    auth_engine.attach_save(account, session.sid)
+    print("Registered:", account.username, "island", account.island_name)
+    return redirect('/')
+
+
+@app.route("/logout")
+def logout_page():
+    response = make_response(redirect('/login.html'))
+    response.delete_cookie(app.config.get("SESSION_COOKIE_NAME", "session"))
+    return response
+
+
+@app.route("/pick-save.html")
+def pick_save_page():
+    """The save picker that /login.html used to be, kept for testing."""
     saves = get_saves()
-    return render_template("login.html", version=version, release_date=release_date, dropdown_items=get_sessions_dropdown_info(saves))
+    return render_template("login-classic.html", version=version, release_date=release_date,
+                           dropdown_items=get_sessions_dropdown_info(saves))
 
 def get_avail_avatars():
     # list(set([u for u in fetch_urls() if u.endswith('.png')]))
@@ -1687,6 +1754,12 @@ def user_response():
     else:
         user = copy.deepcopy(init_user())
         print("initialized new")
+        # Set by the register page, so a new empire carries the player's own
+        # island name instead of the default.
+        new_world_name = session.pop('new_world_name', None)
+        if new_world_name:
+            user["userInfo"]["worldName"] = new_world_name
+            print("New empire named", new_world_name)
         session['user_object'] = user
         # qc = [{"name": "Q0516", "complete":False, "expired":False,"progress":[0],"completedTasks":0}]
         session['quests'] = []
@@ -3049,6 +3122,8 @@ if __name__ == '__main__':
     socketio.init_app(app)
     db.init_app(app)
     sess.init_app(app)
+    with app.app_context():
+        db.create_all()  # accounts table; flask-session makes its own
     app.session_interface = AssetSkippingSessionInterface(app.session_interface)
     # session.app.session_interface.db.create_all()
     # app.session_interface.db.create_all()
