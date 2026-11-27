@@ -88,7 +88,13 @@ sess = Session()
 # written back to the database on every request. With a save of several MB that makes each image/swf
 # request take up to a second and they queue up behind each other.
 ASSET_PATH_PREFIXES = ("/img/", "/js/", "/css/", "/nullassets/", "/assets/", "/127.0.0.1", "/gameSettings.xml",
-                       "/changelog.txt", "/favicon.ico", "/files/empire-s.assets.zgncdn.com/assets/109338/ZGame")
+                       "/changelog.txt", "/favicon.ico", "/files/empire-s.assets.zgncdn.com/assets/109338/ZGame",
+                       # Since BASE_PATH became absolute these arrive at the root rather
+                       # than under "/127.0.0.1...". They are assets and must skip the
+                       # session like the rest: the game posts record_stats constantly,
+                       # and letting each one load the save and write it back loses
+                       # whatever a gateway call saved in the meantime.
+                       "/record_stats.php", "/en_US.xml", "/questSettings.xml")
 
 
 class AssetSkippingSessionInterface(SessionInterface):
