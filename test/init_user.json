@@ -92,7 +92,11 @@
                 "neighborVisits": {},
                 "unlockedUnits": [],
                 "unlockedItems": [],
-                "unlockedContracts": [],
+                "unlockedContracts": [
+                    "U01",
+                    "U43",
+                    "U66"
+                ],
                 "tags": {},
                 "consumableUsedByCode": null,
                 "treasureVaultOpenTS": 0,

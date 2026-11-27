@@ -1357,6 +1357,21 @@ def post_gateway():
     # return ('', 204)
 
 
+# Each military building's basic unit is gated by a contract, not by a level:
+# gameSettings marks them with unlockOverrideName "Barracks 01", "Drydocks 01"
+# and "Hangar 01". unlockedContracts is only ever filled by buying an unlock, so
+# without seeding these the starter troops can never be trained at all.
+#
+# Only the basic unit of each building is seeded. The same contract names also
+# cover premium aircraft (Starfire, Blackbird, Vampire Fighter) and all thirty
+# Powerup Factory consumables, which are not starter equipment.
+STARTER_CONTRACTS = [
+    "U01",  # Cadet Soldiers   (Barracks 01)
+    "U43",  # Ironclad Gunboat (Drydocks 01)
+    "U66",  # Vintage Fighter  (Hangar 01)
+]
+
+
 def init_user():
     # global game_objects
     unit = "U01,,,,"
@@ -1504,7 +1519,7 @@ def init_user():
                 "neighborVisits": {},
                 "unlockedUnits": [],
                 "unlockedItems": [],
-                "unlockedContracts": [],
+                "unlockedContracts": list(STARTER_CONTRACTS),
                 "tags": {},
                 "consumableUsedByCode": None,
                 "treasureVaultOpenTS": 0,
@@ -1726,6 +1741,15 @@ def user_response():
 
     # if ""B01": 20"
 
+
+    # Existing saves predate the seeding in init_user, and a save made before
+    # this would have no way to train its starter units.
+    player_data = session['user_object']["userInfo"]["player"]
+    unlocked_contracts = player_data.setdefault("unlockedContracts", [])
+    missing_contracts = [code for code in STARTER_CONTRACTS if code not in unlocked_contracts]
+    if missing_contracts:
+        unlocked_contracts.extend(missing_contracts)
+        print("Unlocking starter contracts", missing_contracts)
 
     item_inventory = session['user_object']["userInfo"]["player"]["inventory"]["items"]
     if item_inventory.get("B01", 0) < 20:
