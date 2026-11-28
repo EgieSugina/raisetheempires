@@ -113,6 +113,10 @@ class AssetSkippingSessionInterface(SessionInterface):
     def save_session(self, app, session, response):
         if request.path.startswith(ASSET_PATH_PREFIXES):
             return
+        # Do not let Flask-Session's refresh cookie overwrite explicit login/logout/switch cookies.
+        cookie_prefix = f"{app.config.get('SESSION_COOKIE_NAME', 'session')}="
+        if any(h.startswith(cookie_prefix) for h in response.headers.getlist("Set-Cookie")):
+            return
         self.inner.save_session(app, session, response)
 
 
@@ -139,7 +143,7 @@ MAX_ADMIN_ID = 123
 def index():
     # The game is the home page now. With no save loaded but saves on disk, go
     # to the picker first, otherwise opening "/" would quietly start a new one.
-    if 'user_object' not in session and get_saves():
+    if 'user_object' not in session and 'new_world_name' not in session and get_saves():
         return make_response(redirect('/login.html'))
     return ruffle()
 
@@ -711,7 +715,7 @@ def register_page():
         return render_template("register.html", version=version, release_date=release_date,
                                error=error, username=username, island_name=island_name), 400
 
-    if 'user_object' in session:
+    if 'user_object' in session or 'account_id' in session:
         # This browser already holds somebody's save. Writing the new empire
         # into the same cookie would overwrite it, so drop the cookie and let
         # them register again with a clean one.

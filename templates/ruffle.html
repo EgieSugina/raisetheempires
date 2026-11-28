@@ -204,13 +204,7 @@
 			// letterbox "on" keeps the 4:3 stage undistorted in any window shape.
 			letterbox: "on",
 			scale: "showAll",
-			parameters: '\
-				serverTime={{time}}\
-				&is_staging=true\
-				&debugMode=true\
-				&generateSchema=1\
-				&sn_app_url=\
-				&stats=1'
+			parameters: 'serverTime={{time}}&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1'
 		}).then(function () {
 			console.info("Ruffle successfully loaded the file");
 		}).catch(function (e) {
