@@ -1,0 +1,13 @@
+.git
+.venv
+instance
+cache
+__pycache__
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+log.txt
+backup-save-db
+*.tar
+*.tar.gz

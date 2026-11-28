@@ -257,8 +257,25 @@ def get_zid():
     return libscrc.iso(session.sid.encode()) // 2048
 
 
+def other_unique_saves(saves):
+    """Return valid saves excluding the current player and deduplicated by uid."""
+    my_uid = get_zid() if session else None
+    seen = set()
+    out = []
+    for save in (saves or []):
+        if not validate_save(save) or save['user_object']["userInfo"]["player"]["level"] < -6:
+            continue
+        uid = save['user_object']["userInfo"]["player"]["uid"]
+        if uid == my_uid or uid in seen:
+            continue
+        seen.add(uid)
+        out.append(save)
+    return out
+
+
 def get_sessions_friends(saves):
-    if saves:
+    filtered = other_unique_saves(saves)
+    if filtered:
         response = [{
                 "zid":  save['user_object']["userInfo"]["player"]["uid"],
                 "uid":  save['user_object']["userInfo"]["player"]["uid"],
@@ -268,7 +285,7 @@ def get_sessions_friends(saves):
                 "portrait": "img/avatars/" + (save['profilePic'] if 'profilePic' in save and save['profilePic'] is not None else "blank.png"),
                 "pic": "",
                 "pic_square": ""
-        } for save in saves if validate_save(save) and save['user_object']["userInfo"]["player"]["level"] >= -6]
+        } for save in filtered]
         for item in response:
             item["pic"] = item["portrait"]
             item["pic_square"] = item["portrait"]
@@ -278,8 +295,4 @@ def get_sessions_friends(saves):
 
 
 def get_sessions_id(saves):
-    if saves:
-        response = [save['user_object']["userInfo"]["player"]["uid"] for save in saves if validate_save(save) and save['user_object']["userInfo"]["player"]["level"] >= -6]
-    else:
-        response = []
-    return response
+    return [save['user_object']["userInfo"]["player"]["uid"] for save in other_unique_saves(saves)]

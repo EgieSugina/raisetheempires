@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: raisetheempires
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: raisetheempires
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: raisetheempires
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: transcode-1
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: media
+          effect: NoSchedule
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: raisetheempires
+            - name: POSTGRES_USER
+              value: empires
+            - name: POSTGRES_PASSWORD
+              value: empires_prod_2026
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "empires", "-d", "raisetheempires"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: raisetheempires
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: empires-app
+  namespace: raisetheempires
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: empires-app
+  template:
+    metadata:
+      labels:
+        app: empires-app
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: transcode-1
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: media
+          effect: NoSchedule
+      containers:
+        - name: empires-app
+          image: raisetheempires:prod
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_URL
+              value: postgresql+psycopg://empires:empires_prod_2026@postgres:5432/raisetheempires
+            - name: SECRET_KEY
+              value: raisetheempires-prod-secret-2026
+            - name: ALLOW_MULTI_INSTANCE
+              value: "1"
+          ports:
+            - containerPort: 5005
+          resources:
+            requests:
+              cpu: 100m
+              memory: 350Mi
+            limits:
+              cpu: "1"
+              memory: 900Mi
+          readinessProbe:
+            httpGet:
+              path: /admin/status.json
+              port: 5005
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: empires-app-hpa
+  namespace: raisetheempires
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: empires-app
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: empires-app
+  namespace: raisetheempires
+spec:
+  selector:
+    app: empires-app
+  ports:
+    - port: 80
+      targetPort: 5005
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: empires-route
+  namespace: raisetheempires
+spec:
+  parentRefs:
+    - name: public
+      namespace: tsk-edge
+      sectionName: web
+  hostnames:
+    - "empireandallies.tsukimi.my"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: empires-app
+          port: 80

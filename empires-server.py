@@ -19,7 +19,7 @@ import init_settings as settings
 if __name__ == '__main__':
     settings.read_ops()
 
-if not settings.debug:
+if not settings.debug and os.environ.get("ALLOW_MULTI_INSTANCE") != "1":
     me = singleton.SingleInstance()
 
 if os.name == 'nt':
@@ -124,6 +124,9 @@ class AssetSkippingSessionInterface(SessionInterface):
 start = datetime.now()
 app_base_path = base_path()
 app: Flask = Flask(__name__, root_path=app_base_path)
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.secret_key = os.environ.get("SECRET_KEY", "raisetheempires-shared-secret")
 
 print("Root folder", app.root_path)
 print("Instance folder", app.instance_path)
@@ -302,7 +305,9 @@ def get_sessions_dropdown_info(saves):
     return response
 
 def get_sessions_info(saves):
-    if saves:
+    from game_settings import other_unique_saves
+    filtered = other_unique_saves(saves)
+    if filtered:
         response = [{
             "uid": save['user_object']["userInfo"]["player"]["uid"],
             "resource": save['user_object']["userInfo"]["player"]["playerResourceType"],
@@ -321,7 +326,7 @@ def get_sessions_info(saves):
             "tending": {
                 "actions": 3
             }
-        } for save in saves if validate_save(save) and save['user_object']["userInfo"]["player"]["level"] >= -6]
+        } for save in filtered]
     else:
         response = []
     return response
