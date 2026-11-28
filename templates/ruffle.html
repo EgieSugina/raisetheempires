@@ -193,30 +193,33 @@
 		.stat-box .v { display: block; font-size: 14px; font-weight: 600; color: #f0f3f8; font-variant-numeric: tabular-nums; margin-top: 2px; }
 
 		.drawer-actions {
-			display: flex;
-			flex-direction: column;
-			gap: 8px;
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 7px;
 			margin-top: auto;
 		}
 		.drawer-actions a, .drawer-actions button {
 			font: inherit;
-			font-size: 13.5px;
+			font-size: 12px;
 			font-weight: 500;
 			text-align: left;
 			color: #e6e8eb;
 			background: rgba(255, 255, 255, .05);
 			border: 1px solid rgba(255, 255, 255, .1);
-			border-radius: 9px;
-			padding: 10px 13px;
+			border-radius: 8px;
+			padding: 8px 10px;
 			text-decoration: none;
 			cursor: pointer;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
+			gap: 4px;
+			min-width: 0;
+			white-space: nowrap;
 			transition: background .15s ease, border-color .15s ease;
 		}
 		.drawer-actions a:hover, .drawer-actions button:hover { background: rgba(122, 154, 214, .14); border-color: rgba(122, 154, 214, .55); color: #fff; }
-		.drawer-actions a.logout { margin-top: 6px; background: rgba(224, 112, 112, .08); border-color: rgba(224, 112, 112, .3); color: #f5a3a3; }
+		.drawer-actions a.logout { background: rgba(224, 112, 112, .08); border-color: rgba(224, 112, 112, .3); color: #f5a3a3; }
 		.drawer-actions a.logout:hover { background: rgba(224, 112, 112, .18); border-color: #e07070; color: #ffd6d6; }
 
 		.chat-box {
@@ -540,16 +543,16 @@
 			</form>
 		</div>
 		<div class="drawer-actions">
-			<button id="quality-toggle" type="button"><span>Graphics Quality</span><span id="quality-lbl">Low</span></button>
+			<button id="quality-toggle" type="button" title="Graphics Quality"><span>Quality</span><span id="quality-lbl">Low</span></button>
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
-			<button id="open-friends" type="button"><span>Friends / Teman <span id="friends-badge"></span></span><span>&#x1F465;</span></button>
-			<button id="open-tickets" type="button"><span>Support / Tiket</span><span>&#x1F3AB;</span></button>
+			<button id="open-friends" type="button" title="Friends / Teman"><span>Friends <span id="friends-badge"></span></span><span>&#x1F465;</span></button>
+			<button id="open-tickets" type="button" title="Support / Tiket"><span>Support</span><span>&#x1F3AB;</span></button>
 			{% if is_admin %}
-			<a href="/save-editor"><span>Edit Save</span><span>&#9998;</span></a>
-			<a href="/admin"><span>Admin Console</span><span>&#9881;</span></a>
+			<a href="/save-editor" title="Edit Save"><span>Edit Save</span><span>&#9998;</span></a>
+			<a href="/admin" title="Admin Console"><span>Admin</span><span>&#9881;</span></a>
 			{% endif %}
-			<a href="/login.html"><span>Switch Account</span><span>&#8644;</span></a>
-			<a class="logout" href="#" onclick="logout(); return false"><span>Logout</span><span>&#x21AA;</span></a>
+			<a href="/login.html" title="Switch Account"><span>Switch Acc</span><span>&#8644;</span></a>
+			<a class="logout" href="#" onclick="logout(); return false" title="Logout"><span>Logout</span><span>&#x21AA;</span></a>
 		</div>
 	</aside>
 
@@ -946,6 +949,17 @@
 		loadFriends();
 
 		loadingScreenUpdate();
+	</script>
+	<script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
+	<script>
+		if (typeof kofiWidgetOverlay !== 'undefined') {
+			kofiWidgetOverlay.draw('sweetgin', {
+				'type': 'floating-chat',
+				'floating-chat.donateButton.text': 'Support me',
+				'floating-chat.donateButton.background-color': '#00b9fe',
+				'floating-chat.donateButton.text-color': '#fff'
+			});
+		}
 	</script>
 </body>
 </html>
