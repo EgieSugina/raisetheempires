@@ -545,6 +545,8 @@
 		<div class="drawer-actions">
 			<button id="quality-toggle" type="button" title="Graphics Quality"><span>Quality</span><span id="quality-lbl">Low</span></button>
 			<button id="fps-toggle" type="button" title="FPS Cap (30 / 60 / 120)"><span>FPS Cap</span><span id="fps-lbl">30</span></button>
+			<button id="renderer-toggle" type="button" title="Ruffle Renderer (Auto / WebGL / Canvas)"><span>Renderer</span><span id="renderer-lbl">Auto</span></button>
+			<button id="reset-mem" type="button" title="Reload halaman untuk reset memori Ruffle (progress aman)"><span>Reset Memori</span><span>&#x21BB;</span></button>
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
 			<button id="open-friends" type="button" title="Friends / Teman"><span>Friends <span id="friends-badge"></span></span><span>&#x1F465;</span></button>
 			<button id="open-tickets" type="button" title="Support / Tiket"><span>Support</span><span>&#x1F3AB;</span></button>
@@ -625,6 +627,21 @@
 			location.reload();
 		});
 
+		var savedRenderer = localStorage.getItem("rte_renderer") || "auto";
+		if (["auto", "webgl", "canvas"].indexOf(savedRenderer) === -1) savedRenderer = "auto";
+		var rLabels = {auto: "Auto", webgl: "WebGL", canvas: "Canvas"};
+		var rLbl = document.getElementById("renderer-lbl");
+		if (rLbl) rLbl.textContent = rLabels[savedRenderer];
+		document.getElementById("renderer-toggle").addEventListener("click", function () {
+			var order = ["auto", "webgl", "canvas"];
+			var next = order[(order.indexOf(savedRenderer) + 1) % order.length];
+			localStorage.setItem("rte_renderer", next);
+			location.reload();
+		});
+		document.getElementById("reset-mem").addEventListener("click", function () {
+			location.reload();
+		});
+
 		(function () {
 			var origFetch = window.fetch;
 			var assetCount = 0;
@@ -667,6 +684,7 @@
 			allowFullscreen: true,
 			quality: savedQuality,
 			frameRate: savedFps === 30 ? null : savedFps,
+			preferredRenderer: savedRenderer === "auto" ? null : savedRenderer,
 			wmode: "opaque",
 			// letterbox "on" keeps the 4:3 stage undistorted in any window shape.
 			letterbox: "on",
@@ -736,7 +754,9 @@
 				.catch(function () {});
 		}
 		refreshHeaderResources();
-		setInterval(refreshHeaderResources, 4000);
+		setInterval(function () {
+			if (!document.hidden) refreshHeaderResources();
+		}, 10000);
 
 		var chatList = document.getElementById("chat-list");
 		function loadChat() {
