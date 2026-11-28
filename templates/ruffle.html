@@ -72,45 +72,113 @@
 			background: #10121a;
 		}
 
-		/* Overlay bar: out of the way until the pointer goes near it. */
-		#bar {
+		/* Corner toggle button + slide-out profile/menu drawer. */
+		#menu-toggle {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			z-index: 25;
+			width: 34px;
+			height: 34px;
+			border-radius: 8px;
+			border: 1px solid rgba(255, 255, 255, .18);
+			background: rgba(16, 18, 26, .68);
+			color: #e6e8eb;
+			font-size: 16px;
+			line-height: 1;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			opacity: .72;
+			transition: opacity .15s ease, border-color .15s ease;
+		}
+		#menu-toggle:hover { opacity: 1; border-color: #7a9ad6; }
+
+		#drawer-backdrop {
+			position: fixed;
+			inset: 0;
+			z-index: 29;
+			background: rgba(0, 0, 0, .45);
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity .2s ease;
+		}
+		#drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+		#drawer {
 			position: fixed;
 			top: 0;
 			right: 0;
-			z-index: 20;
+			bottom: 0;
+			width: 280px;
+			max-width: 88vw;
+			z-index: 30;
+			background: rgba(18, 20, 28, .96);
+			border-left: 1px solid rgba(255, 255, 255, .14);
+			padding: 18px 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 14px;
+			transform: translateX(100%);
+			transition: transform .22s ease;
+			color: #e6e8eb;
+			font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+		}
+		#drawer.open { transform: translateX(0); }
+
+		.drawer-head {
 			display: flex;
 			align-items: center;
+			justify-content: space-between;
 			gap: 8px;
-			padding: 8px 12px;
-			border-bottom-left-radius: 10px;
-			background: rgba(16, 18, 26, .82);
-			border-left: 1px solid rgba(255, 255, 255, .12);
+			padding-bottom: 10px;
 			border-bottom: 1px solid rgba(255, 255, 255, .12);
-			opacity: 0;
-			transform: translateY(-100%);
-			transition: opacity .18s ease, transform .18s ease;
 		}
-		#bar:hover, #bar:focus-within, #bar-zone:hover + #bar, body.bar-peek #bar { opacity: 1; transform: none; }
+		.drawer-head .who { color: #aab1ba; font-size: 14px; }
+		.drawer-head .who b { color: #fff; font-weight: 600; }
+		#drawer-close {
+			background: none;
+			border: 1px solid rgba(255, 255, 255, .16);
+			color: #aab1ba;
+			border-radius: 6px;
+			width: 28px;
+			height: 28px;
+			cursor: pointer;
+			font-size: 15px;
+		}
+		#drawer-close:hover { color: #fff; border-color: #7a9ad6; }
 
-		#bar .who { color: #aab1ba; font-size: 13px; margin-right: 4px; white-space: nowrap; }
-		#bar .who b { color: #e6e8eb; font-weight: 600; }
+		.drawer-stats {
+			background: rgba(255, 255, 255, .04);
+			border: 1px solid rgba(255, 255, 255, .08);
+			border-radius: 8px;
+			padding: 10px 12px;
+			font-size: 12.5px;
+			color: #cfd5de;
+			line-height: 1.65;
+		}
 
-		#bar a, #bar button {
+		.drawer-actions {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+		.drawer-actions a, .drawer-actions button {
 			font: inherit;
 			font-size: 13px;
+			text-align: left;
 			color: #e6e8eb;
 			background: rgba(255, 255, 255, .06);
-			border: 1px solid rgba(255, 255, 255, .16);
-			border-radius: 6px;
-			padding: 4px 10px;
+			border: 1px solid rgba(255, 255, 255, .14);
+			border-radius: 8px;
+			padding: 9px 12px;
 			text-decoration: none;
 			cursor: pointer;
-			white-space: nowrap;
 		}
-		#bar a:hover, #bar button:hover { border-color: #7a9ad6; color: #cfdcf5; }
-
-		/* Hover target so the bar can be summoned without it being visible. */
-		#bar-zone { position: fixed; top: 0; right: 0; width: 260px; height: 14px; z-index: 19; }
+		.drawer-actions a:hover, .drawer-actions button:hover { border-color: #7a9ad6; color: #cfdcf5; }
+		.drawer-actions a.logout { border-color: rgba(224, 112, 112, .35); color: #f29b9b; }
+		.drawer-actions a.logout:hover { border-color: #e07070; color: #ffd0d0; }
 
 		#shutdown-banner {
 			position: fixed;
@@ -178,27 +246,33 @@
 		<div id="ruffle"></div>
 	</div>
 
-	<div id="bar-zone" aria-hidden="true"></div>
 	<div id="shutdown-banner" role="alert"></div>
-	<div id="bar">
-		<span id="who-header" class="who">
-		{% for dropdown_item in dropdown_items %}{% if dropdown_item["uid"] == zid | int %}
-		<b>{{ dropdown_item["world_name"] }}</b> &middot; lvl {{ dropdown_item["level"] }}
-		{% endif %}{% endfor %}
-		</span>
-		<span id="res-header" class="who">
+	<button id="menu-toggle" title="Profile &amp; Menu" aria-label="Profile &amp; Menu">&#9776;</button>
+	<div id="drawer-backdrop"></div>
+	<aside id="drawer" aria-label="Profile &amp; Menu">
+		<div class="drawer-head">
+			<span id="who-header" class="who">
+			{% for dropdown_item in dropdown_items %}{% if dropdown_item["uid"] == zid | int %}
+			<b>{{ dropdown_item["world_name"] }}</b> &middot; lvl {{ dropdown_item["level"] }}
+			{% endif %}{% endfor %}
+			</span>
+			<button id="drawer-close" title="Close">&times;</button>
+		</div>
+		<div id="res-header" class="drawer-stats">
 		{% if resources %}
 		Coins {{ resources.get("coins", 0) }} &middot; Cash {{ cash | default(0) }} &middot; Energy {{ energy | default(0) }} &middot; Wood {{ resources.get("wood", 0) }} &middot; Iron {{ resources.get("iron", 0) }} &middot; Oil {{ resources.get("oil", 0) }}
 		{% endif %}
-		</span>
-		<button id="fullscreen" title="Fullscreen">Fullscreen</button>
-		{% if is_admin %}
-		<a href="/save-editor">Edit save</a>
-		<a href="/admin">Admin</a>
-		{% endif %}
-		<a href="/login.html">Switch save</a>
-		<a href="#" onclick="logout(); return false">Logout</a>
-	</div>
+		</div>
+		<div class="drawer-actions">
+			<button id="fullscreen" title="Fullscreen">Fullscreen</button>
+			{% if is_admin %}
+			<a href="/save-editor">Edit save</a>
+			<a href="/admin">Admin</a>
+			{% endif %}
+			<a href="/login.html">Switch save</a>
+			<a class="logout" href="#" onclick="logout(); return false">Logout</a>
+		</div>
+	</aside>
 
 	<div id="loading_game">
 		<div class="scrim"></div>
@@ -248,9 +322,17 @@
 			}
 		});
 
-		// Show the bar briefly on load so it is discoverable, then let it hide.
-		document.body.classList.add("bar-peek");
-		setTimeout(function () { document.body.classList.remove("bar-peek"); }, 2600);
+		var drawer = document.getElementById("drawer");
+		var backdrop = document.getElementById("drawer-backdrop");
+		function toggleDrawer(open) {
+			var show = typeof open === "boolean" ? open : !drawer.classList.contains("open");
+			drawer.classList.toggle("open", show);
+			backdrop.classList.toggle("open", show);
+		}
+		document.getElementById("menu-toggle").addEventListener("click", function () { toggleDrawer(true); });
+		document.getElementById("drawer-close").addEventListener("click", function () { toggleDrawer(false); });
+		backdrop.addEventListener("click", function () { toggleDrawer(false); });
+		document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggleDrawer(false); });
 
 		var shutdownRemaining = null;
 		function renderShutdownBanner() {
