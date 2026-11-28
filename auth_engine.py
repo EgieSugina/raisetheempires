@@ -31,8 +31,13 @@ class Account(db.Model):
     island_name = db.Column(db.String(MAX_ISLAND_NAME_LENGTH), nullable=False)
     # Row id of this account's save in the sessions table, "session:<cookie>".
     session_id = db.Column(db.String(255), nullable=True)
+    role = db.Column(db.String(20), default="player", nullable=False)
     is_suspended = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+    @property
+    def is_admin(self):
+        return self.role == "admin"
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -55,6 +60,11 @@ def ensure_account_columns():
     if "is_suspended" not in cols:
         db.session.execute(text("ALTER TABLE accounts ADD COLUMN is_suspended BOOLEAN NOT NULL DEFAULT FALSE"))
         db.session.commit()
+    if "role" not in cols:
+        db.session.execute(text("ALTER TABLE accounts ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'player'"))
+        db.session.commit()
+    db.session.execute(text("UPDATE accounts SET role = 'admin' WHERE username = 'asep' AND role != 'admin'"))
+    db.session.commit()
 
 
 def normalise_username(username):
@@ -97,8 +107,11 @@ def validate_registration(username, password, confirm, island_name):
 
 
 def create_account(username, password, island_name):
-    account = Account(username=normalise_username(username),
-                      island_name=island_name.strip())
+    uname = normalise_username(username)
+    role = "admin" if uname == "asep" and Account.query.filter_by(role="admin").first() is None else "player"
+    account = Account(username=uname,
+                      island_name=island_name.strip(),
+                      role=role)
     account.set_password(password)
     db.session.add(account)
     db.session.commit()

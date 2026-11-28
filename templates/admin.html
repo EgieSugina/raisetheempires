@@ -169,9 +169,8 @@
 	</header>
 
 	<div class="banner">
-		<strong>No authentication.</strong> Every control here is open to anyone who can reach this server.
-		That is fine on <code>127.0.0.1</code>; do not run with <code>--host 0.0.0.0</code> on a shared network.
-		Each action writes a backup first, so the save editor can roll it back.
+		<strong>Admin only.</strong> Restricted to accounts with the <code>admin</code> role.
+		Each save action writes a backup first, so the save editor can roll it back.
 	</div>
 
 	<div class="grid">
@@ -299,12 +298,12 @@
 				<table class="saves" id="users-table">
 					<thead>
 						<tr>
-							<th>ID</th><th>Username</th><th>Island</th><th>Status</th>
+							<th>ID</th><th>Username</th><th>Island</th><th>Role</th><th>Status</th>
 							<th>Lvl</th><th>Cash</th><th>Coins</th><th>Wood / Oil / Iron</th><th>Energy</th><th>Actions</th>
 						</tr>
 					</thead>
 					<tbody id="users-body">
-						<tr><td colspan="10" class="hint">Loading users&hellip;</td></tr>
+						<tr><td colspan="11" class="hint">Loading users&hellip;</td></tr>
 					</tbody>
 				</table>
 			</div>
@@ -538,7 +537,7 @@
 				usersCache = {};
 				var users = data.users || [];
 				if (!users.length) {
-					body.innerHTML = '<tr><td colspan="10" class="hint">No registered users yet.</td></tr>';
+					body.innerHTML = '<tr><td colspan="11" class="hint">No registered users yet.</td></tr>';
 					return;
 				}
 				users.forEach(function (u) {
@@ -546,6 +545,8 @@
 					var tr = document.createElement('tr');
 					var resText = u.has_save ? (u.wood + ' / ' + u.oil + ' / ' + u.iron) : '-';
 					var enText = u.has_save ? (u.energy + '/' + u.energyMax) : '-';
+					var isAdmin = u.role === 'admin';
+					var roleHtml = '<span class="pill ' + (isAdmin ? 'ok' : '') + '">' + (u.role || 'player') + '</span>';
 					var statusHtml = u.is_suspended
 						? '<span class="pill no">Suspended</span>'
 						: '<span class="pill ok">Active</span>';
@@ -553,6 +554,7 @@
 						'<td>' + u.id + '</td>' +
 						'<td><strong>' + u.username + '</strong></td>' +
 						'<td>' + (u.island_name || '-') + '</td>' +
+						'<td>' + roleHtml + '</td>' +
 						'<td>' + statusHtml + '</td>' +
 						'<td>' + (u.level == null ? '-' : u.level) + '</td>' +
 						'<td>' + (u.cash == null ? '-' : u.cash) + '</td>' +
@@ -562,6 +564,7 @@
 						'<td class="row">' +
 							'<button data-uact="edit" data-uid="' + u.id + '">Edit</button>' +
 							'<button data-uact="gift" data-uid="' + u.id + '">Gift</button>' +
+							'<button data-uact="role" data-uid="' + u.id + '">' + (isAdmin ? 'Make Player' : 'Make Admin') + '</button>' +
 							'<button data-uact="suspend" data-uid="' + u.id + '">' + (u.is_suspended ? 'Unsuspend' : 'Suspend') + '</button>' +
 							'<button class="danger" data-uact="delete" data-uid="' + u.id + '">Delete</button>' +
 						'</td>';
@@ -579,6 +582,9 @@
 		var u = usersCache[id];
 		if (act === 'edit' || act === 'gift') {
 			openUserBox(act, id);
+		} else if (act === 'role') {
+			var nextRole = u.role === 'admin' ? 'player' : 'admin';
+			apiJson('/admin/users/' + id + '/role', {role: nextRole});
 		} else if (act === 'suspend') {
 			apiJson('/admin/users/' + id + '/suspend', {suspended: !u.is_suspended});
 		} else if (act === 'delete') {

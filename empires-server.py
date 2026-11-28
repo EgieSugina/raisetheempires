@@ -155,11 +155,60 @@ def index():
     return ruffle()
 
 
+def _current_account():
+    aid = session.get("account_id")
+    if aid:
+        acc = db.session.get(auth_engine.Account, aid)
+        if acc is not None:
+            return acc
+    sid = getattr(session, "sid", None)
+    if sid:
+        return auth_engine.Account.query.filter_by(
+            session_id=auth_engine.SESSION_KEY_PREFIX + sid
+        ).first()
+    return None
+
+
+ADMIN_EXACT_PATHS = {
+    "/admin",
+    "/save-editor",
+    "/list_session",
+    "/wipe_session",
+    "/gazillionaire",
+    "/deprogress",
+    "/language_editor",
+}
+ADMIN_PREFIXES = (
+    "/admin/users",
+    "/seed/",
+    "/patch/",
+    "/unlock_quest/",
+    "/complete_quest/",
+    "/remove_quest/",
+)
+
+
+@app.before_request
+def _protect_admin_routes():
+    path = request.path
+    if path in ADMIN_EXACT_PATHS or path.startswith(ADMIN_PREFIXES):
+        acc = _current_account()
+        if acc is None:
+            if request.is_json or path.endswith(".json") or request.method == "POST":
+                return Response(json.dumps({"error": "Authentication required"}), status=401, mimetype="application/json")
+            return make_response(redirect("/login.html"))
+        if not acc.is_admin or acc.is_suspended:
+            if request.is_json or path.endswith(".json") or request.method == "POST":
+                return Response(json.dumps({"error": "Admin access required"}), status=403, mimetype="application/json")
+            return ("Forbidden: admin access required.", 403)
+
+
 def game_page_context():
     """Template values shared by every page that embeds the game."""
     saves = get_saves()
     resources = get_dict(session, "user_object", "userInfo", "world", "resources")
     player = get_dict(session, "user_object", "userInfo", "player")
+    acc = _current_account()
     return dict(time=datetime.now().timestamp(), zid=str(get_zid()),
                 version=version,
                 allies=json.dumps(get_allies_friend(saves),
@@ -169,6 +218,7 @@ def game_page_context():
                 resources=resources,
                 cash=player.get("cash"),
                 energy=player.get("energy", resources.get("energy")),
+                is_admin=bool(acc and acc.is_admin),
                 picture=get_avatar_pic(),
                 dropdown_items=get_sessions_dropdown_info(saves),
                 motd=get_motd())
@@ -532,6 +582,7 @@ def admin_users_json():
             "username": acc.username,
             "island_name": world_name,
             "session_id": acc.session_id,
+            "role": acc.role,
             "is_suspended": bool(acc.is_suspended),
             "created_at": acc.created_at.strftime("%Y-%m-%d %H:%M") if acc.created_at else "-",
             "has_save": save is not None,
@@ -562,6 +613,23 @@ def admin_user_suspend(account_id):
         acc.is_suspended = not bool(acc.is_suspended)
     db.session.commit()
     return Response(json.dumps({"ok": True, "is_suspended": acc.is_suspended}), mimetype="application/json")
+
+
+@app.route("/admin/users/<int:account_id>/role", methods=['POST'])
+def admin_user_role(account_id):
+    acc = db.session.get(auth_engine.Account, account_id)
+    if acc is None:
+        return Response(json.dumps({"error": "User not found"}), status=404, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    new_role = (data.get("role") or "").strip().lower()
+    if new_role not in ("admin", "player"):
+        return Response(json.dumps({"error": "Invalid role"}), status=400, mimetype="application/json")
+    me = _current_account()
+    if me is not None and me.id == acc.id and new_role != "admin":
+        return Response(json.dumps({"error": "Cannot demote yourself"}), status=400, mimetype="application/json")
+    acc.role = new_role
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "role": acc.role}), mimetype="application/json")
 
 
 @app.route("/admin/users/<int:account_id>/edit", methods=['POST'])
