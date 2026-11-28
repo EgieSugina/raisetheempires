@@ -130,7 +130,9 @@ def world_state_change(*state_args):
 def progress_finish_building_count_placed(state, state_machine, game_item, step, previous_state, *state_args):
     return lambda task, progress, i, *args: \
         task["_action"] in ["finishBuilding", "countPlaced"] and progress_match_filters(game_item)(task, progress, i, *args) and \
-        progress < int(task["_total"]) and state['-stateName'] == state_machine['-builtState'] and \
+        progress < int(task["_total"]) and bool(state_machine) and '-builtState' in state_machine and \
+        '-stateName' in state and '-stateName' in previous_state and \
+        state['-stateName'] == state_machine['-builtState'] and \
         int(previous_state['-stateName']) < int(state['-stateName'])
 
 
