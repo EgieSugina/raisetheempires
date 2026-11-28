@@ -2326,6 +2326,18 @@ def user_response():
         qc = session['quests']
 
         user["neighbors"] = get_allies_info()
+        if not user.get("survivalMode"):
+            user["survivalMode"] = {
+                "curSet": "set3",
+                "curWave": 1,
+                "curLoop": 0,
+                "curPlayerFleet": None,
+                "curEnemyFleet": None,
+                "lastPlayedTime": 0,
+                "rewardRefreshCount": 0,
+                "rewards": {},
+                "rewardChanged": False,
+            }
 
         meta = {"newPVE": 0, "QuestComponent": [e for e in session['quests'] if e["complete"] == False]}
 
