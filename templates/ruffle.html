@@ -358,6 +358,65 @@
 			cursor: pointer;
 		}
 
+		#ticket-modal {
+			position: fixed;
+			inset: 0;
+			z-index: 45;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			background: rgba(8, 10, 16, .65);
+			backdrop-filter: blur(4px);
+			padding: 16px;
+		}
+		#ticket-modal.open { display: flex; }
+		.ticket-card {
+			width: 420px;
+			max-width: 100%;
+			max-height: 85vh;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+			background: #141824;
+			border: 1px solid rgba(255, 255, 255, .14);
+			border-radius: 12px;
+			padding: 16px;
+			color: #e6e8eb;
+			font: 13.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			box-shadow: 0 18px 48px rgba(0, 0, 0, .6);
+		}
+		.ticket-head { display: flex; align-items: center; justify-content: space-between; }
+		.ticket-head h3 { margin: 0; font-size: 15px; color: #fff; }
+		.ticket-close { background: none; border: 1px solid rgba(255,255,255,.15); color: #aab1ba; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; }
+		.ticket-form { display: flex; flex-direction: column; gap: 8px; }
+		.ticket-form input, .ticket-form textarea {
+			width: 100%;
+			padding: 8px 10px;
+			border-radius: 7px;
+			border: 1px solid rgba(255, 255, 255, .14);
+			background: rgba(0, 0, 0, .28);
+			color: #fff;
+			font: inherit;
+		}
+		.ticket-form textarea { min-height: 70px; resize: vertical; }
+		.ticket-form button {
+			padding: 8px 12px;
+			border-radius: 7px;
+			border: 1px solid rgba(122, 154, 214, .55);
+			background: rgba(122, 154, 214, .22);
+			color: #fff;
+			font-weight: 600;
+			cursor: pointer;
+		}
+		#ticket-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; max-height: 240px; }
+		.t-item { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 8px 10px; }
+		.t-item .t-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; color: #fff; }
+		.t-item .t-badge { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); text-transform: uppercase; }
+		.t-item .t-badge.replied { color: #6cc083; border-color: #6cc083; }
+		.t-item .t-badge.open { color: #e6b104; border-color: #e6b104; }
+		.t-item .t-body { color: #cfd5de; margin-top: 4px; font-size: 12.5px; white-space: pre-wrap; }
+		.t-item .t-reply { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.08); color: #9be8b0; font-size: 12.5px; }
+
 		#shutdown-banner {
 			position: fixed;
 			top: 12px;
@@ -441,14 +500,6 @@
 			</div>
 			<button id="drawer-close" title="Close">&times;</button>
 		</div>
-		<div id="res-header" class="drawer-stats">
-			<div class="stat-box"><span class="k">Coins</span><span class="v" id="st-coins">{{ resources.get("coins", 0) if resources else 0 }}</span></div>
-			<div class="stat-box"><span class="k">Cash</span><span class="v" id="st-cash">{{ cash | default(0) }}</span></div>
-			<div class="stat-box"><span class="k">Energy</span><span class="v" id="st-energy">{{ energy | default(0) }}</span></div>
-			<div class="stat-box"><span class="k">Wood</span><span class="v" id="st-wood">{{ resources.get("wood", 0) if resources else 0 }}</span></div>
-			<div class="stat-box"><span class="k">Iron</span><span class="v" id="st-iron">{{ resources.get("iron", 0) if resources else 0 }}</span></div>
-			<div class="stat-box"><span class="k">Oil</span><span class="v" id="st-oil">{{ resources.get("oil", 0) if resources else 0 }}</span></div>
-		</div>
 		<div class="chat-box">
 			<div class="chat-head">
 				<span>World Chat</span>
@@ -476,6 +527,7 @@
 		</div>
 		<div class="drawer-actions">
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
+			<button id="open-tickets" type="button"><span>Support / Tiket</span><span>&#x1F3AB;</span></button>
 			{% if is_admin %}
 			<a href="/save-editor"><span>Edit Save</span><span>&#9998;</span></a>
 			<a href="/admin"><span>Admin Console</span><span>&#9881;</span></a>
@@ -484,6 +536,21 @@
 			<a class="logout" href="#" onclick="logout(); return false"><span>Logout</span><span>&#x21AA;</span></a>
 		</div>
 	</aside>
+
+	<div id="ticket-modal" role="dialog" aria-label="Support Ticket">
+		<div class="ticket-card">
+			<div class="ticket-head">
+				<h3>Support / Tiket</h3>
+				<button type="button" id="ticket-close" class="ticket-close">&times;</button>
+			</div>
+			<form id="ticket-form" class="ticket-form">
+				<input id="tk-subject" type="text" maxlength="120" placeholder="Judul kendala / bug..." required />
+				<textarea id="tk-msg" maxlength="2000" placeholder="Jelaskan detail masalah Anda..." required></textarea>
+				<button type="submit">Kirim Tiket</button>
+			</form>
+			<div id="ticket-list"></div>
+		</div>
+	</div>
 
 	<div id="loading_game">
 		<div class="scrim"></div>
@@ -576,11 +643,6 @@
 					if (whoEl && s.world_name !== null) {
 						whoEl.innerHTML = "<b>" + String(s.world_name).replace(/[<>&]/g, "") + "</b><span>Level " + (s.level ?? 1) + "</span>";
 					}
-					var map = {"st-coins": s.coins, "st-cash": s.cash, "st-energy": s.energy, "st-wood": s.wood, "st-iron": s.iron, "st-oil": s.oil};
-					Object.keys(map).forEach(function (id) {
-						var el = document.getElementById(id);
-						if (el && map[id] !== null && map[id] !== undefined) el.textContent = map[id];
-					});
 				})
 				.catch(function () {});
 		}
@@ -683,6 +745,55 @@
 
 		loadChat();
 		setInterval(loadChat, 3500);
+
+		var ticketModal = document.getElementById("ticket-modal");
+		function loadTickets() {
+			fetch("/support/tickets.json", {cache: "no-store"})
+				.then(function (r) { return r.ok ? r.json() : null; })
+				.then(function (data) {
+					var list = document.getElementById("ticket-list");
+					list.innerHTML = "";
+					var rows = (data && data.tickets) || [];
+					if (!rows.length) {
+						list.innerHTML = '<div style="color:#8c95a3;font-size:12px">Belum ada tiket.</div>';
+						return;
+					}
+					rows.forEach(function (t) {
+						var item = document.createElement("div");
+						item.className = "t-item";
+						item.innerHTML = '<div class="t-top"><span class="t-subj"></span><span class="t-badge ' + t.status + '">' + t.status + '</span></div>' +
+							'<div class="t-body"></div>' + (t.admin_reply ? '<div class="t-reply"></div>' : '');
+						item.querySelector(".t-subj").textContent = "#" + t.id + " " + t.subject;
+						item.querySelector(".t-body").textContent = t.message;
+						if (t.admin_reply) item.querySelector(".t-reply").textContent = "Admin: " + t.admin_reply;
+						list.appendChild(item);
+					});
+				});
+		}
+		document.getElementById("open-tickets").addEventListener("click", function () {
+			toggleDrawer(false);
+			ticketModal.classList.add("open");
+			loadTickets();
+		});
+		document.getElementById("ticket-close").addEventListener("click", function () { ticketModal.classList.remove("open"); });
+		ticketModal.addEventListener("click", function (e) { if (e.target === ticketModal) ticketModal.classList.remove("open"); });
+		document.getElementById("ticket-form").addEventListener("submit", function (e) {
+			e.preventDefault();
+			var subj = document.getElementById("tk-subject").value.trim();
+			var msg = document.getElementById("tk-msg").value.trim();
+			if (!subj || !msg) return;
+			fetch("/support/tickets", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({subject: subj, message: msg})
+			}).then(function (r) {
+				if (r.ok) {
+					document.getElementById("tk-subject").value = "";
+					document.getElementById("tk-msg").value = "";
+					loadTickets();
+				}
+			});
+		});
 
 		loadingScreenUpdate();
 	</script>

@@ -183,6 +183,7 @@ ADMIN_EXACT_PATHS = {
 }
 ADMIN_PREFIXES = (
     "/admin/users",
+    "/admin/tickets",
     "/seed/",
     "/patch/",
     "/unlock_quest/",
@@ -764,6 +765,78 @@ def chat_claim_drop(drop_id):
         "claims_count": cnt + 1,
         "max_claims": drop.max_claims,
     }), mimetype="application/json")
+
+
+def _serialize_ticket(t):
+    return {
+        "id": t.id,
+        "account_id": t.account_id,
+        "username": t.username,
+        "island_name": t.island_name,
+        "subject": t.subject,
+        "message": t.message,
+        "status": t.status,
+        "admin_reply": t.admin_reply or "",
+        "created_at": t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "",
+    }
+
+
+@app.route("/support/tickets.json")
+def support_tickets_json():
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    rows = auth_engine.SupportTicket.query.filter_by(account_id=acc.id).order_by(
+        auth_engine.SupportTicket.id.desc()
+    ).limit(20).all()
+    return Response(json.dumps({"tickets": [_serialize_ticket(t) for t in rows]}), mimetype="application/json")
+
+
+@app.route("/support/tickets", methods=['POST'])
+def support_ticket_create():
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    subject = (data.get("subject") or "").strip()[:120]
+    message = (data.get("message") or "").strip()[:2000]
+    if not subject or not message:
+        return Response(json.dumps({"error": "Subject and message are required"}), status=400, mimetype="application/json")
+    island_name = (get_dict(session, "user_object", "userInfo").get("worldName")
+                   if session.get("user_object") else None) or acc.island_name or acc.username
+    t = auth_engine.SupportTicket(
+        account_id=acc.id,
+        username=acc.username,
+        island_name=island_name[:40],
+        subject=subject,
+        message=message,
+    )
+    db.session.add(t)
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "ticket": _serialize_ticket(t)}), mimetype="application/json")
+
+
+@app.route("/admin/tickets.json")
+def admin_tickets_json():
+    rows = auth_engine.SupportTicket.query.order_by(auth_engine.SupportTicket.id.desc()).limit(100).all()
+    return Response(json.dumps({"tickets": [_serialize_ticket(t) for t in rows]}), mimetype="application/json")
+
+
+@app.route("/admin/tickets/<int:ticket_id>/reply", methods=['POST'])
+def admin_ticket_reply(ticket_id):
+    t = db.session.get(auth_engine.SupportTicket, ticket_id)
+    if t is None:
+        return Response(json.dumps({"error": "Ticket not found"}), status=404, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    reply = (data.get("reply") or "").strip()[:2000]
+    status = (data.get("status") or ("replied" if reply else "closed")).strip().lower()
+    if status not in ("open", "replied", "closed"):
+        return Response(json.dumps({"error": "Invalid status"}), status=400, mimetype="application/json")
+    if reply:
+        t.admin_reply = reply
+    t.status = status
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "ticket": _serialize_ticket(t)}), mimetype="application/json")
 
 
 def _find_save_for_account(account):

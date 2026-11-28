@@ -162,3 +162,18 @@ class ChatMessage(db.Model):
     message = db.Column(db.String(400), nullable=False)
     gift_drop_id = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class SupportTicket(db.Model):
+    __tablename__ = "support_tickets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, nullable=False, index=True)
+    username = db.Column(db.String(40), nullable=False)
+    island_name = db.Column(db.String(40), nullable=False)
+    subject = db.Column(db.String(120), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default="open", nullable=False)
+    admin_reply = db.Column(db.Text, default="", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)

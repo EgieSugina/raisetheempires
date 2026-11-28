@@ -376,6 +376,14 @@
 		</section>
 
 		<section class="card full">
+			<div class="row" style="justify-content:space-between; margin-bottom:10px">
+				<h2 style="margin:0">Support Tickets</h2>
+				<button id="tickets-refresh">Refresh tickets</button>
+			</div>
+			<div id="admin-tickets-list" class="hint" style="margin:0">Loading tickets&hellip;</div>
+		</section>
+
+		<section class="card full">
 			<h2>Saves in database</h2>
 			{% if saves %}
 			<table class="saves">
@@ -662,8 +670,43 @@
 		});
 	});
 
+	function loadTickets() {
+		return fetch('/admin/tickets.json', {cache: 'no-store'})
+			.then(function (r) { return r.json(); })
+			.then(function (data) {
+				var box = document.getElementById('admin-tickets-list');
+				box.innerHTML = '';
+				var rows = data.tickets || [];
+				if (!rows.length) {
+					box.textContent = 'No support tickets yet.';
+					return;
+				}
+				rows.forEach(function (t) {
+					var div = document.createElement('div');
+					div.style.cssText = 'padding:10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px;background:var(--bg);color:var(--ink)';
+					div.innerHTML = '<div class="row" style="justify-content:space-between"><strong>#' + t.id + ' ' + t.subject +
+						' <span style="color:var(--muted);font-weight:normal">(' + t.username + ' / ' + t.island_name + ' &middot; ' + t.created_at + ')</span></strong>' +
+						'<span class="pill ' + (t.status === 'replied' ? 'ok' : (t.status === 'closed' ? '' : 'no')) + '">' + t.status + '</span></div>' +
+						'<div style="margin:6px 0;white-space:pre-wrap" class="tk-msg"></div>' +
+						'<div class="row"><input class="grow tk-reply" placeholder="Reply to player..." /><button data-tk="' + t.id + '" data-st="replied">Reply</button><button data-tk="' + t.id + '" data-st="closed">Close</button></div>';
+					div.querySelector('.tk-msg').textContent = t.message;
+					div.querySelector('.tk-reply').value = t.admin_reply || '';
+					box.appendChild(div);
+				});
+			});
+	}
+	document.getElementById('tickets-refresh').addEventListener('click', loadTickets);
+	document.getElementById('admin-tickets-list').addEventListener('click', function (e) {
+		var btn = e.target.closest('button[data-tk]');
+		if (!btn) return;
+		var card = btn.closest('div').parentElement;
+		var reply = card.querySelector('.tk-reply').value;
+		apiJson('/admin/tickets/' + btn.dataset.tk + '/reply', {reply: reply, status: btn.dataset.st}).then(loadTickets);
+	});
+
 	refresh();
 	loadUsers();
+	loadTickets();
 	setInterval(refresh, 5000);
 </script>
 </body>
