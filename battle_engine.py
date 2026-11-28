@@ -367,6 +367,13 @@ def handle_shield_upgrades(friendlies, player_unit_id):
     return False
 
 
+def _amf_list(val):
+    """Unpack Ruffle AMF0 integer-keyed dict {0: a, 1: b} or list into a list."""
+    if isinstance(val, dict):
+        return [val[k] for k in sorted(val.keys())]
+    return list(val or [])
+
+
 def init_battle(params):
     try:
         if 'target' not in params:
@@ -382,7 +389,7 @@ def init_battle(params):
                             f"{baddies_fleet_name!r} not in session (fleet-numbering mismatch, "
                             f"e.g. battle fleet {params.get('fleet')!r} uses a different sequence)")
                     friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                                  session['fleets'][friendlies_fleet_name]]
+                                  _amf_list(session['fleets'][friendlies_fleet_name])]
                     baddies = [lookup_item_by_code(baddy[1:]) for sub_fleet in
                                simple_list(session['fleets'][baddies_fleet_name])
                                for baddy, count in sub_fleet.items()
@@ -392,24 +399,24 @@ def init_battle(params):
                                                    isinstance(v, dict) and v.get('name') == "FleetName"]
                     print("Survival AI fleet" if enemy_fleet["status"] == 4096 else "Invader AI fleet")
                     baddies = [lookup_item_by_code(baddy.split(',')[0])
-                               for baddy in enemy_fleet["units"]]
+                               for baddy in _amf_list(enemy_fleet["units"])]
                     friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                                  session['fleets'][get_last_fleet_name()]]
+                                  _amf_list(session['fleets'][get_last_fleet_name()])]
             elif params['name'] == "FleetName":
                 print("Invader target consumable")
                 [(fleet_name, enemy_fleet)] = [(k, v) for k, v in session['fleets'].items() if isinstance(v, dict) and v.get('name') == "FleetName"]
                 baddies = [lookup_item_by_code(baddy.split(',')[0])
-                           for baddy in enemy_fleet["units"]]
+                           for baddy in _amf_list(enemy_fleet["units"])]
                 friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                              session['fleets'][get_last_fleet_name()]]
-            elif fleet_or_name in session['fleets'] and isinstance(simple_list(session['fleets'][fleet_or_name])[0], str):
+                              _amf_list(session['fleets'][get_last_fleet_name()])]
+            elif fleet_or_name in session['fleets'] and isinstance(_amf_list(session['fleets'][fleet_or_name])[0], str):
                 print("Ally direct target")
                 friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                              session['fleets'][fleet_or_name]]
+                              _amf_list(session['fleets'][fleet_or_name])]
                 if get_next_fleet_name(fleet_or_name) not in session['fleets']:
                     baddies = [lookup_item_by_code(baddy.split(',')[0]) for sub_fleet in
                                simple_list(session['fleets']['FleetName'])
-                               for baddy in sub_fleet["units"]]
+                               for baddy in _amf_list(sub_fleet["units"])]
                 else:
                     baddies = [lookup_item_by_code(baddy[1:]) for sub_fleet in
                                simple_list(session['fleets'][get_next_fleet_name(fleet_or_name)])
@@ -420,7 +427,7 @@ def init_battle(params):
                            for baddy, count in sub_fleet.items()
                            for i in range(int(count))]
                 friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                              session['fleets'][get_previous_fleet_name(fleet_or_name)]]
+                              _amf_list(session['fleets'][get_previous_fleet_name(fleet_or_name)])]
             else:
                 open_quests = [e["name"] for e in session["quests"] if e["complete"] == False]
                 task = None
@@ -432,7 +439,7 @@ def init_battle(params):
                     if matching_tasks:
                         task = matching_tasks[0]
                         friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                                      session['fleets'][get_friendly_by_ally_fleet(params['name'])]]
+                                      _amf_list(session['fleets'][get_friendly_by_ally_fleet(params['name'])])]
                         break
 
                 if task is None:
@@ -452,14 +459,14 @@ def init_battle(params):
                        for baddy, count in sub_fleet.items()
                        for i in range(int(count))]
             friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                          session['fleets'][params['fleet']]]
+                          _amf_list(session['fleets'][params['fleet']])]
         elif params['target'] == "FleetName":
             print("Invader target")
             baddies = [lookup_item_by_code(baddy.split(',')[0]) for sub_fleet in
                        simple_list(session['fleets']['FleetName'])
-                       for baddy in sub_fleet["units"]]
+                       for baddy in _amf_list(sub_fleet["units"])]
             friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                          session['fleets'][params['fleet']]]
+                          _amf_list(session['fleets'][params['fleet']])]
         else:
             open_quests = [e["name"] for e in session["quests"] if e["complete"] == False]
             task = None
@@ -471,7 +478,7 @@ def init_battle(params):
                 if task:
                     task = task[0]
                     friendlies = [lookup_item_by_code(friendly.split(',')[0]) for friendly in
-                                  session['fleets'][params['fleet']]]
+                                  _amf_list(session['fleets'][params['fleet']])]
                     break
 
             if not task:
@@ -835,7 +842,7 @@ def get_new_enemy_fleet_name():
 
 
 def get_survival_player_fleet():
-    player_units = session["fleets"][get_last_fleet_name()]
+    player_units = _amf_list(session["fleets"][get_last_fleet_name()])
     subtype = lookup_item_by_code(player_units[0].split(',')[0])["-subtype"]
     research = session['user_object']["userInfo"]["world"]["research"]
 
