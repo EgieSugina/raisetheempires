@@ -3253,7 +3253,10 @@ def crew_request_response(params):
     building_name = params[2]
     action = params[3]
     
-    building = lookup_object(building_id)
+    building = next((e for e in session['user_object']["userInfo"]["world"]["objects"] if e['id'] == building_id), None)
+    if building is None:
+        print("crew_request_response: building", building_id, building_name, "not found in world objects, skipping")
+        return {"errorType": 0, "userId": 1, "metadata": {"newPVE": 0}, "data": []}
     
     if action == 'crew':
         
