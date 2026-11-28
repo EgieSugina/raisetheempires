@@ -186,6 +186,8 @@
 				<tr><th>Level / XP</th><td id="st-level">&hellip;</td></tr>
 				<tr><th>Coins</th><td id="st-coins">&hellip;</td></tr>
 				<tr><th>Cash</th><td id="st-cash">&hellip;</td></tr>
+				<tr><th>Energy</th><td id="st-energy">&hellip;</td></tr>
+				<tr><th>Wood / Iron / Oil</th><td id="st-res">&hellip;</td></tr>
 				<tr><th>Population</th><td id="st-pop">&hellip;</td></tr>
 				<tr><th>Quests done / open</th><td id="st-quests">&hellip;</td></tr>
 				<tr><th>Save version</th><td id="st-saveversion">&hellip;</td></tr>
@@ -416,6 +418,8 @@
 				set('st-level', s.level === null ? '-' : s.level + ' / ' + s.xp);
 				set('st-coins', s.coins === null ? '-' : s.coins);
 				set('st-cash', s.cash === null ? '-' : s.cash);
+				set('st-energy', s.energy === null ? '-' : s.energy);
+				set('st-res', s.wood === null ? '-' : s.wood + ' / ' + s.iron + ' / ' + s.oil);
 				set('st-pop', s.population === null ? '-' : s.population);
 				set('st-quests', s.quests_complete + ' / ' + s.quests_incomplete);
 				set('st-saveversion', s.save_version === null ? '-' : s.save_version);

@@ -174,12 +174,17 @@ def home():
 def game_page_context():
     """Template values shared by every page that embeds the game."""
     saves = get_saves()
+    resources = get_dict(session, "user_object", "userInfo", "world", "resources")
+    player = get_dict(session, "user_object", "userInfo", "player")
     return dict(time=datetime.now().timestamp(), zid=str(get_zid()),
                 version=version,
                 allies=json.dumps(get_allies_friend(saves),
                                   default=lambda o: '<not serializable>', sort_keys=False, indent=2),
                 app_friends=json.dumps(get_allies_id(saves)),
                 worldname=session['user_object']["userInfo"]["worldName"] if 'user_object' in session else "Emperor",
+                resources=resources,
+                cash=player.get("cash"),
+                energy=player.get("energy", resources.get("energy")),
                 picture=get_avatar_pic(),
                 dropdown_items=get_sessions_dropdown_info(saves),
                 motd=get_motd())
@@ -486,6 +491,7 @@ def admin_status():
     player = get_dict(session, "user_object", "userInfo", "player")
     world = get_dict(session, "user_object", "userInfo", "world")
     quests = session.get('quests') or []
+    resources = get_dict(session, "user_object", "userInfo", "world", "resources")
     return {
         "has_session": user_object is not None,
         "save_valid": validate_save(session, False),
@@ -493,8 +499,16 @@ def admin_status():
         "uid": player.get("uid"),
         "level": player.get("level"),
         "xp": player.get("xp"),
-        "coins": get_dict(session, "user_object", "userInfo", "world", "resources").get("coins"),
+        "coins": resources.get("coins"),
         "cash": player.get("cash"),
+        "energy": player.get("energy", resources.get("energy")),
+        "wood": resources.get("wood"),
+        "iron": resources.get("iron"),
+        "oil": resources.get("oil"),
+        "aluminum": resources.get("aluminum"),
+        "copper": resources.get("copper"),
+        "gold": resources.get("gold"),
+        "uranium": resources.get("uranium"),
         "population": session.get('population'),
         "quests_complete": len([e for e in quests if e.get("complete")]),
         "quests_incomplete": len([e for e in quests if not e.get("complete")]),
@@ -1888,7 +1902,7 @@ def user_response():
 def friend_response():
     friend_types = ["recommendedFriends", "zyngaFriends", "empireFriends", "sevenDayFriends", "fourteenDayFriends",
                     "thirtyDayFriends", "payerFriends", "allFriends", "zyngaFriendsByEngagement", "empireFriendsByEngagement"]
-    friend = {friend_type: {"data": [ally["friend"] for ally in allies.values() if ally.get("friend") and ally.get(friend_type)]} for friend_type in friend_types}
+    friend = {friend_type: {"data": [dict(ally["friend"]) for ally in allies.values() if ally.get("friend") and ally.get(friend_type)]} for friend_type in friend_types}
 
 
 

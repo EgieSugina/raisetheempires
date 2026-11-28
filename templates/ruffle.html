@@ -164,6 +164,9 @@
 		{% for dropdown_item in dropdown_items %}{% if dropdown_item["uid"] == zid | int %}
 		<span class="who"><b>{{ dropdown_item["world_name"] }}</b> &middot; lvl {{ dropdown_item["level"] }}</span>
 		{% endif %}{% endfor %}
+		{% if resources %}
+		<span class="who">Coins {{ resources.get("coins", 0) }} &middot; Cash {{ cash | default(0) }} &middot; Energy {{ energy | default(0) }} &middot; Wood {{ resources.get("wood", 0) }} &middot; Iron {{ resources.get("iron", 0) }} &middot; Oil {{ resources.get("oil", 0) }}</span>
+		{% endif %}
 		<button id="fullscreen" title="Fullscreen">Fullscreen</button>
 		<a href="/save-editor">Edit save</a>
 		<a href="/admin">Admin</a>
