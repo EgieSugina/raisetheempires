@@ -31,6 +31,7 @@ class Account(db.Model):
     island_name = db.Column(db.String(MAX_ISLAND_NAME_LENGTH), nullable=False)
     # Row id of this account's save in the sessions table, "session:<cookie>".
     session_id = db.Column(db.String(255), nullable=True)
+    is_suspended = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def set_password(self, password):
@@ -47,6 +48,15 @@ class Account(db.Model):
         return self.session_id.split(":", 1)[1] if ":" in self.session_id else self.session_id
 
 
+def ensure_account_columns():
+    """Add new columns to existing SQLite accounts table if missing."""
+    from sqlalchemy import text
+    cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(accounts)"))}
+    if "is_suspended" not in cols:
+        db.session.execute(text("ALTER TABLE accounts ADD COLUMN is_suspended BOOLEAN NOT NULL DEFAULT 0"))
+        db.session.commit()
+
+
 def normalise_username(username):
     return (username or "").strip().lower()
 
@@ -60,6 +70,8 @@ def check_credentials(username, password):
     account = find_account(username)
     if account is None or not account.check_password(password or ""):
         return None, "Wrong username or password."
+    if account.is_suspended:
+        return None, "Account is suspended."
     return account, None
 
 

@@ -207,11 +207,10 @@
 			</table>
 			<h2 style="margin-top:16px">Open</h2>
 			<div class="links">
-				<a class="btn" href="/ruffle.html" target="_blank">Game (Ruffle)</a>
-				<a class="btn" href="/nodebug.html" target="_blank">Game (Flash)</a>
-				<a class="btn" href="/home.html" target="_blank">home.html</a>
-				<a class="btn" href="/login.html" target="_blank">Pick save</a>
-				<a class="btn" href="/save-editor" target="_blank">Save editor</a>
+				<a class="btn" href="/" target="_blank">Home (Game)</a>
+				<a class="btn" href="/save-editor" target="_blank">Edit Save</a>
+				<a class="btn" href="/login.html" target="_blank">Login / Switch</a>
+				<a class="btn" href="/register.html" target="_blank">Register</a>
 				<a class="btn" href="/list_session" target="_blank">list_session</a>
 				<a class="btn" href="/language_editor" target="_blank">Language editor</a>
 			</div>
@@ -289,6 +288,66 @@
 				<code>user_object</code> &mdash; e.g. <code>user_object/userInfo/world/resources/coins</code>.
 				<code>saved</code> and <code>original_save_version</code> are refused by the server.
 				Backed up before each change.</p>
+		</section>
+
+		<section class="card full">
+			<div class="row" style="justify-content:space-between; margin-bottom:10px">
+				<h2 style="margin:0">Users</h2>
+				<button id="users-refresh">Refresh users</button>
+			</div>
+			<div style="overflow-x:auto">
+				<table class="saves" id="users-table">
+					<thead>
+						<tr>
+							<th>ID</th><th>Username</th><th>Island</th><th>Status</th>
+							<th>Lvl</th><th>Cash</th><th>Coins</th><th>Wood / Oil / Iron</th><th>Energy</th><th>Actions</th>
+						</tr>
+					</thead>
+					<tbody id="users-body">
+						<tr><td colspan="10" class="hint">Loading users&hellip;</td></tr>
+					</tbody>
+				</table>
+			</div>
+			<div id="user-action-box" style="display:none; margin-top:14px; padding:12px; border:1px solid var(--line); border-radius:6px; background:var(--bg)">
+				<div class="row" style="justify-content:space-between; margin-bottom:8px">
+					<strong id="user-action-title">Edit user</strong>
+					<button id="user-action-close">Close</button>
+				</div>
+				<div id="user-edit-fields" style="display:none">
+					<div class="row">
+						<label class="lbl">Island name</label>
+						<input id="ue-island" class="grow" />
+						<label class="lbl">New password (optional)</label>
+						<input id="ue-pass" type="password" class="grow" placeholder="min 6 chars" />
+					</div>
+					<div class="row">
+						<label class="lbl">Level</label>
+						<input id="ue-level" type="number" class="narrow" />
+						<label class="lbl">Energy</label>
+						<input id="ue-energy" type="number" class="narrow" />
+						<label class="lbl">EnergyMax</label>
+						<input id="ue-energymax" type="number" class="narrow" />
+						<button id="ue-save">Save changes</button>
+					</div>
+				</div>
+				<div id="user-gift-fields" style="display:none">
+					<div class="row">
+						<label class="lbl">Cash</label><input id="ug-cash" type="number" class="narrow" value="0" />
+						<label class="lbl">Coins</label><input id="ug-coins" type="number" class="narrow" value="0" />
+						<label class="lbl">Wood</label><input id="ug-wood" type="number" class="narrow" value="0" />
+						<label class="lbl">Oil</label><input id="ug-oil" type="number" class="narrow" value="0" />
+						<label class="lbl">Iron</label><input id="ug-iron" type="number" class="narrow" value="0" />
+						<label class="lbl">Energy</label><input id="ug-energy" type="number" class="narrow" value="0" />
+					</div>
+					<div class="row">
+						<label class="lbl">Item code (optional)</label>
+						<input id="ug-item-code" class="narrow" placeholder="e.g. U01" />
+						<label class="lbl">Qty</label>
+						<input id="ug-item-count" type="number" class="narrow" value="1" />
+						<button id="ug-send">Send gift</button>
+					</div>
+				</div>
+			</div>
 		</section>
 
 		<section class="card full">
@@ -428,7 +487,136 @@
 			.catch(function (err) { log('status failed: ' + err, 'err'); });
 	}
 
+	function apiJson(url, payload) {
+		log('POST ' + url + ' ...');
+		return fetch(url, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify(payload || {})
+		}).then(function (res) {
+			return res.json().catch(function () { return {}; }).then(function (data) {
+				if (res.ok) {
+					log('  ' + res.status + ' ok', 'ok');
+				} else {
+					log('  ' + res.status + ' ' + (data.error || res.statusText), 'err');
+				}
+				refresh();
+				loadUsers();
+				return {ok: res.ok, data: data};
+			});
+		}).catch(function (err) {
+			log('  failed: ' + err, 'err');
+		});
+	}
+
+	var activeUserId = null;
+	var usersCache = {};
+
+	function openUserBox(mode, id) {
+		var u = usersCache[id];
+		if (!u) return;
+		activeUserId = id;
+		document.getElementById('user-action-box').style.display = 'block';
+		document.getElementById('user-edit-fields').style.display = mode === 'edit' ? 'block' : 'none';
+		document.getElementById('user-gift-fields').style.display = mode === 'gift' ? 'block' : 'none';
+		document.getElementById('user-action-title').textContent = (mode === 'edit' ? 'Edit ' : 'Gift ') + u.username;
+		if (mode === 'edit') {
+			document.getElementById('ue-island').value = u.island_name || '';
+			document.getElementById('ue-pass').value = '';
+			document.getElementById('ue-level').value = u.level == null ? '' : u.level;
+			document.getElementById('ue-energy').value = u.energy == null ? '' : u.energy;
+			document.getElementById('ue-energymax').value = u.energyMax == null ? '' : u.energyMax;
+		}
+	}
+
+	function loadUsers() {
+		return fetch('/admin/users.json', {cache: 'no-store'})
+			.then(function (res) { return res.json(); })
+			.then(function (data) {
+				var body = document.getElementById('users-body');
+				body.innerHTML = '';
+				usersCache = {};
+				var users = data.users || [];
+				if (!users.length) {
+					body.innerHTML = '<tr><td colspan="10" class="hint">No registered users yet.</td></tr>';
+					return;
+				}
+				users.forEach(function (u) {
+					usersCache[u.id] = u;
+					var tr = document.createElement('tr');
+					var resText = u.has_save ? (u.wood + ' / ' + u.oil + ' / ' + u.iron) : '-';
+					var enText = u.has_save ? (u.energy + '/' + u.energyMax) : '-';
+					var statusHtml = u.is_suspended
+						? '<span class="pill no">Suspended</span>'
+						: '<span class="pill ok">Active</span>';
+					tr.innerHTML =
+						'<td>' + u.id + '</td>' +
+						'<td><strong>' + u.username + '</strong></td>' +
+						'<td>' + (u.island_name || '-') + '</td>' +
+						'<td>' + statusHtml + '</td>' +
+						'<td>' + (u.level == null ? '-' : u.level) + '</td>' +
+						'<td>' + (u.cash == null ? '-' : u.cash) + '</td>' +
+						'<td>' + (u.coins == null ? '-' : u.coins) + '</td>' +
+						'<td>' + resText + '</td>' +
+						'<td>' + enText + '</td>' +
+						'<td class="row">' +
+							'<button data-uact="edit" data-uid="' + u.id + '">Edit</button>' +
+							'<button data-uact="gift" data-uid="' + u.id + '">Gift</button>' +
+							'<button data-uact="suspend" data-uid="' + u.id + '">' + (u.is_suspended ? 'Unsuspend' : 'Suspend') + '</button>' +
+							'<button class="danger" data-uact="delete" data-uid="' + u.id + '">Delete</button>' +
+						'</td>';
+					body.appendChild(tr);
+				});
+			})
+			.catch(function (err) { log('users failed: ' + err, 'err'); });
+	}
+
+	document.getElementById('users-table').addEventListener('click', function (e) {
+		var btn = e.target.closest('button[data-uact]');
+		if (!btn) return;
+		var id = parseInt(btn.dataset.uid, 10);
+		var act = btn.dataset.uact;
+		var u = usersCache[id];
+		if (act === 'edit' || act === 'gift') {
+			openUserBox(act, id);
+		} else if (act === 'suspend') {
+			apiJson('/admin/users/' + id + '/suspend', {suspended: !u.is_suspended});
+		} else if (act === 'delete') {
+			if (!confirm('Delete user ' + (u ? u.username : id) + ' and their save?')) return;
+			apiJson('/admin/users/' + id + '/delete', {});
+		}
+	});
+
+	document.getElementById('users-refresh').addEventListener('click', loadUsers);
+	document.getElementById('user-action-close').addEventListener('click', function () {
+		document.getElementById('user-action-box').style.display = 'none';
+	});
+	document.getElementById('ue-save').addEventListener('click', function () {
+		if (!activeUserId) return;
+		apiJson('/admin/users/' + activeUserId + '/edit', {
+			island_name: document.getElementById('ue-island').value,
+			password: document.getElementById('ue-pass').value,
+			level: document.getElementById('ue-level').value,
+			energy: document.getElementById('ue-energy').value,
+			energyMax: document.getElementById('ue-energymax').value
+		});
+	});
+	document.getElementById('ug-send').addEventListener('click', function () {
+		if (!activeUserId) return;
+		apiJson('/admin/users/' + activeUserId + '/gift', {
+			cash: document.getElementById('ug-cash').value,
+			coins: document.getElementById('ug-coins').value,
+			wood: document.getElementById('ug-wood').value,
+			oil: document.getElementById('ug-oil').value,
+			iron: document.getElementById('ug-iron').value,
+			energy: document.getElementById('ug-energy').value,
+			item_code: document.getElementById('ug-item-code').value,
+			item_count: document.getElementById('ug-item-count').value
+		});
+	});
+
 	refresh();
+	loadUsers();
 	setInterval(refresh, 5000);
 </script>
 </body>

@@ -148,29 +148,6 @@ def index():
     return ruffle()
 
 
-@app.route("/index-classic.html")
-def index_classic():
-    return render_template("index.html", version=version, release_date=release_date)
-
-
-@app.route("/home.html")
-def home():
-    print("home")
-    if not validate_save(session, True):
-        print("Invalid save game")
-        return make_response(redirect('/save-editor')) #todo disable save editor toggle?
-    saves = get_saves()
-    return render_template("home.html", time=datetime.now().timestamp(), zid=str(get_zid()),
-                           version=version,
-                           allies=json.dumps(get_allies_friend(saves),
-                                             default=lambda o: '<not serializable>', sort_keys=False, indent=2),
-                           app_friends=json.dumps(get_allies_id(saves)),
-                           worldname=session['user_object']["userInfo"]["worldName"] if 'user_object' in session else "Emperor",
-                           picture=get_avatar_pic(),
-                           dropdown_items=get_sessions_dropdown_info(saves),
-                           motd=get_motd()
-                           )
-
 def game_page_context():
     """Template values shared by every page that embeds the game."""
     saves = get_saves()
@@ -192,10 +169,16 @@ def game_page_context():
 
 @app.route("/ruffle.html")
 def ruffle():
-    print("ruffle")
+    account_id = session.get('account_id')
+    if account_id:
+        acc = db.session.get(auth_engine.Account, account_id)
+        if acc is not None and acc.is_suspended:
+            resp = make_response(redirect('/login.html?suspended=1'))
+            resp.delete_cookie(app.config.get("SESSION_COOKIE_NAME", "session"))
+            return resp
     if not validate_save(session, True):
         print("Invalid save game")
-        return make_response(redirect('/save-editor')) #todo disable save editor toggle?
+        return make_response(redirect('/save-editor'))
     return render_template("ruffle.html", **game_page_context())
 
 def get_allies_friend(saves):
@@ -218,41 +201,6 @@ def get_allies_info():
         get_saves())
 
 
-@app.route("/ruffle-classic.html")
-def ruffle_classic():
-    """The pre-rework game page, with the Facebook chrome and menu bar."""
-    if not validate_save(session, True):
-        return make_response(redirect('/save-editor'))
-    return render_template("ruffle-classic.html", **game_page_context())
-
-
-@app.route("/home-classic.html")
-def home_classic():
-    """The pre-rework debug home page."""
-    if not validate_save(session, True):
-        return make_response(redirect('/save-editor'))
-    return render_template("home-classic.html", **game_page_context())
-
-
-@app.route("/nodebug.html")
-def no_debug():
-    print("no debug page")
-    if not validate_save(session, True):
-        print("Invalid save game")
-        return make_response(redirect('/save-editor')) #todo disable save editor toggle?
-    saves = get_saves()
-    return render_template("nodebug.html", time=datetime.now().timestamp(), zid=str(get_zid()),
-                           version=version,
-                           allies=json.dumps(get_allies_friend(saves),
-                                             default=lambda o: '<not serializable>', sort_keys=False, indent=2),
-                           app_friends=json.dumps(get_allies_id(saves)),
-                           worldname=session['user_object']["userInfo"]["worldName"] if 'user_object' in session else "Emperor",
-                           picture=get_avatar_pic(),
-                           dropdown_items=get_sessions_dropdown_info(saves),
-                           motd=get_motd()
-                           )
-
-
 @app.route("/wipe_session", methods=['GET', 'POST'])
 def wipe_session():
     session.clear()
@@ -263,7 +211,7 @@ def wipe_session():
 
 # @app.route("/switch-session/session-id/<session_id>", methods=['GET', 'POST'])
 # def switch_session(session_id):
-#     response = make_response(redirect('/home.html'))
+#     response = make_response(redirect('/'))
 #     #session.sid = session_id.split(":")[1]
 #     #response.set_cookie('sessions3', session_id.split(":")[1], max_age=60*60*24*365*2)
 #     return response
@@ -325,7 +273,7 @@ def more_money():
         player = session['user_object']["userInfo"]["player"]
         player['cash'] += 10000
         session['saved'] = str(session.get('saved', "")) +  "gazillionaire"
-        response = make_response(redirect('/home.html'))
+        response = make_response(redirect('/'))
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -349,7 +297,7 @@ def deprogress_battle_map():
             deprogress_battle_map()
         else:
             set_active_island_by_map(map, island - 1)
-        response = make_response(redirect('/home.html'))
+        response = make_response(redirect('/'))
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -366,7 +314,7 @@ def change_seed(w, z):
         print("Seed change", prev_seed, "=>", str(world["randSeedW"]) + ', ' + str(world["randSeedZ"]))
 
         session['saved'] = str(session.get('saved', "")) +  "seed"
-        response = make_response(redirect('/home.html'))
+        response = make_response(redirect('/'))
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -400,7 +348,7 @@ def patch_user(path, value):
             dictionary[path.split('/')[-1]] = value
 
             session['saved'] = str(session.get('saved', "")) + "patch"
-            response = make_response(redirect('/home.html'))
+            response = make_response(redirect('/'))
             return response
         else:
             return ("Nope! Disallowed patch root", 403)
@@ -421,7 +369,7 @@ def patch_user_list(path, i, value):
             dictionary[i] = value
 
             session['saved'] = str(session.get('saved', "")) + "patch"
-            response = make_response(redirect('/home.html'))
+            response = make_response(redirect('/'))
             return response
         else:
             return ("Nope! Disallowed patch root", 403)
@@ -439,7 +387,7 @@ def unlock_quest(value):
         merge_quest_progress(new_quests, session['quests'], "session quest")
         session['saved'] = str(session.get('saved', "")) + "unlock"
 
-        response = make_response(redirect('/home.html'))
+        response = make_response(redirect('/'))
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -454,7 +402,7 @@ def complete_quest(value):
         handle_quest_progress(meta, progress_quest(value))
         session['saved'] = str(session.get('saved', "")) + "complete"
 
-        response = make_response(redirect('/home.html'))
+        response = make_response(redirect('/'))
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -467,7 +415,7 @@ def remove_quest(value):
         session['quests'] = [e for e in session['quests'] if e["name"] != value]
         session['saved'] = str(session.get('saved', "")) + "remove"
 
-        response = make_response(redirect('/home.html'))
+        response = make_response(redirect('/'))
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -545,6 +493,154 @@ def admin_status_json():
                     mimetype="application/json")
 
 
+def _find_save_for_account(account):
+    """Return the decoded save dict for an Account, or None."""
+    if not account or not account.session_id:
+        return None
+    for save in get_saves():
+        if save.get("session_id") == account.session_id:
+            return save
+    return None
+
+
+def _sync_active_session_if_matching(save):
+    """If the admin's browser session holds this save, update it in place too."""
+    if session.get("user_object") and ("session:" + getattr(session, "sid", "")) == save.get("session_id"):
+        session["user_object"] = save["user_object"]
+
+
+@app.route("/admin/users.json")
+def admin_users_json():
+    saves_by_sid = {s.get("session_id"): s for s in get_saves()}
+    accounts = auth_engine.Account.query.order_by(auth_engine.Account.id.asc()).all()
+    rows = []
+    for acc in accounts:
+        save = saves_by_sid.get(acc.session_id)
+        player = get_dict(save, "user_object", "userInfo", "player") if save else {}
+        res = get_dict(save, "user_object", "userInfo", "world", "resources") if save else {}
+        world_name = (get_dict(save, "user_object", "userInfo").get("worldName")
+                      if save else None) or acc.island_name
+        rows.append({
+            "id": acc.id,
+            "username": acc.username,
+            "island_name": world_name,
+            "session_id": acc.session_id,
+            "is_suspended": bool(acc.is_suspended),
+            "created_at": acc.created_at.strftime("%Y-%m-%d %H:%M") if acc.created_at else "-",
+            "has_save": save is not None,
+            "uid": player.get("uid"),
+            "level": player.get("level"),
+            "xp": player.get("xp"),
+            "cash": player.get("cash"),
+            "coins": res.get("coins"),
+            "wood": res.get("wood"),
+            "oil": res.get("oil"),
+            "iron": res.get("iron"),
+            "energy": player.get("energy"),
+            "energyMax": player.get("energyMax"),
+        })
+    return Response(json.dumps({"users": rows}, default=lambda o: '<not serializable>'),
+                    mimetype="application/json")
+
+
+@app.route("/admin/users/<int:account_id>/suspend", methods=['POST'])
+def admin_user_suspend(account_id):
+    acc = db.session.get(auth_engine.Account, account_id)
+    if acc is None:
+        return Response(json.dumps({"error": "User not found"}), status=404, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    if "suspended" in data:
+        acc.is_suspended = bool(data["suspended"])
+    else:
+        acc.is_suspended = not bool(acc.is_suspended)
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "is_suspended": acc.is_suspended}), mimetype="application/json")
+
+
+@app.route("/admin/users/<int:account_id>/edit", methods=['POST'])
+def admin_user_edit(account_id):
+    acc = db.session.get(auth_engine.Account, account_id)
+    if acc is None:
+        return Response(json.dumps({"error": "User not found"}), status=404, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    island_name = (data.get("island_name") or "").strip()
+    new_password = data.get("password") or ""
+
+    if island_name:
+        acc.island_name = island_name[:auth_engine.MAX_ISLAND_NAME_LENGTH]
+    if new_password:
+        if len(new_password) < auth_engine.MIN_PASSWORD_LENGTH:
+            return Response(json.dumps({"error": f"Password min {auth_engine.MIN_PASSWORD_LENGTH} chars"}),
+                            status=400, mimetype="application/json")
+        acc.set_password(new_password)
+
+    save = _find_save_for_account(acc)
+    if save is not None:
+        if island_name:
+            save["user_object"]["userInfo"]["worldName"] = acc.island_name
+        player = save["user_object"]["userInfo"]["player"]
+        for field in ("level", "energy", "energyMax"):
+            if data.get(field) not in (None, ""):
+                player[field] = int(data[field])
+        if data.get("energy") not in (None, ""):
+            save["user_object"]["userInfo"]["world"]["resources"]["energy"] = int(data["energy"])
+        store_session(save)
+        _sync_active_session_if_matching(save)
+
+    db.session.commit()
+    return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
+@app.route("/admin/users/<int:account_id>/gift", methods=['POST'])
+def admin_user_gift(account_id):
+    acc = db.session.get(auth_engine.Account, account_id)
+    if acc is None:
+        return Response(json.dumps({"error": "User not found"}), status=404, mimetype="application/json")
+    save = _find_save_for_account(acc)
+    if save is None:
+        return Response(json.dumps({"error": "User has no save yet (must open game once first)"}),
+                        status=400, mimetype="application/json")
+
+    data = request.get_json(silent=True) or {}
+    player = save["user_object"]["userInfo"]["player"]
+    res = save["user_object"]["userInfo"]["world"]["resources"]
+
+    for key in ("cash", "energy"):
+        val = int(data.get(key) or 0)
+        if val:
+            player[key] = int(player.get(key, 0)) + val
+    for key in ("coins", "wood", "oil", "iron"):
+        val = int(data.get(key) or 0)
+        if val:
+            res[key] = int(res.get(key, 0)) + val
+
+    item_code = (data.get("item_code") or "").strip()
+    item_count = int(data.get("item_count") or 0)
+    if item_code and item_count > 0:
+        inv = player.setdefault("inventory", {}).setdefault("items", {})
+        inv[item_code] = int(inv.get(item_code, 0)) + item_count
+
+    store_session(save)
+    _sync_active_session_if_matching(save)
+    return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
+@app.route("/admin/users/<int:account_id>/delete", methods=['POST'])
+def admin_user_delete(account_id):
+    acc = db.session.get(auth_engine.Account, account_id)
+    if acc is None:
+        return Response(json.dumps({"error": "User not found"}), status=404, mimetype="application/json")
+    sid = acc.session_id
+    db.session.delete(acc)
+    if sid:
+        sess_model = app.session_interface.sql_session_model
+        rec = sess_model.query.filter_by(session_id=sid).first()
+        if rec is not None:
+            db.session.delete(rec)
+    db.session.commit()
+    return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
 @app.route("/save-editor", methods=['GET'])
 def save_editor():
     backups = []
@@ -612,7 +708,7 @@ def save_savegame():
     session['population'] = save_game['population']
     session['save_version'] = save_game.get('save_version')
 
-    response = make_response(redirect('/home.html'))
+    response = make_response(redirect('/'))
     return response
     # return ('', 400)
 
@@ -681,23 +777,15 @@ def en_us_file():
 def quest_settings_file():
     return send_from_directory_mod("assets/29oct2012", "questSettings_with_fixes.xml")
 
-@app.route("/releases.html")
-def releases():
-    return render_template("releases.html", version=version)
-
-@app.route("/friends.html")
-def friends_page():
-    saves = get_saves()
-    return render_template("friends.html", version=version, release_date=release_date, dropdown_items=get_sessions_dropdown_info(saves), zid=str(get_zid()))
-
 ACCOUNT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2
 
 
 @app.route("/login.html", methods=['GET', 'POST'])
 def login_page():
     if request.method == 'GET':
+        err = "Account is suspended." if request.args.get("suspended") else None
         return render_template("login.html", version=version, release_date=release_date,
-                               registered=request.args.get("registered"))
+                               registered=request.args.get("registered"), error=err)
 
     account, error = auth_engine.check_credentials(request.form.get("username"),
                                                    request.form.get("password"))
@@ -752,14 +840,6 @@ def logout_page():
     response = make_response(redirect('/login.html'))
     response.delete_cookie(app.config.get("SESSION_COOKIE_NAME", "session"))
     return response
-
-
-@app.route("/pick-save.html")
-def pick_save_page():
-    """The save picker that /login.html used to be, kept for testing."""
-    saves = get_saves()
-    return render_template("login-classic.html", version=version, release_date=release_date,
-                           dropdown_items=get_sessions_dropdown_info(saves))
 
 def get_avail_avatars():
     # list(set([u for u in fetch_urls() if u.endswith('.png')]))
@@ -925,16 +1005,11 @@ def get_avail_motds():
     ]
     return motds
 
-@app.route("/new.html")
-def new_player_page():
-    saves = get_saves()
-    return render_template("new.html", version=version, release_date=release_date, avatars=get_avail_avatars())
-
 @app.route("/chooseavatar/<path:path>", methods=['GET', 'POST'])
 def choose_avatar(path):
     avatar = path
     session['profilePic'] = avatar
-    response = make_response(redirect('/home.html'))
+    response = make_response(redirect('/'))
     return response
 
 def get_avatar_pic():
@@ -3142,6 +3217,7 @@ if __name__ == '__main__':
     sess.init_app(app)
     with app.app_context():
         db.create_all()  # accounts table; flask-session makes its own
+        auth_engine.ensure_account_columns()
     app.session_interface = AssetSkippingSessionInterface(app.session_interface)
     # session.app.session_interface.db.create_all()
     # app.session_interface.db.create_all()
