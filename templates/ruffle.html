@@ -72,7 +72,7 @@
 			background: #10121a;
 		}
 
-		/* Overlay bar: out of the way until the pointer goes near it. */
+		/* Top overlay header: always visible and compact. */
 		#bar {
 			position: fixed;
 			top: 0;
@@ -80,17 +80,14 @@
 			z-index: 20;
 			display: flex;
 			align-items: center;
+			flex-wrap: wrap;
 			gap: 8px;
-			padding: 8px 12px;
+			padding: 6px 12px;
 			border-bottom-left-radius: 10px;
-			background: rgba(16, 18, 26, .82);
+			background: rgba(16, 18, 26, .86);
 			border-left: 1px solid rgba(255, 255, 255, .12);
 			border-bottom: 1px solid rgba(255, 255, 255, .12);
-			opacity: 0;
-			transform: translateY(-100%);
-			transition: opacity .18s ease, transform .18s ease;
 		}
-		#bar:hover, #bar:focus-within, body.bar-peek #bar { opacity: 1; transform: none; }
 
 		#bar .who { color: #aab1ba; font-size: 13px; margin-right: 4px; white-space: nowrap; }
 		#bar .who b { color: #e6e8eb; font-weight: 600; }
@@ -161,12 +158,16 @@
 
 	<div id="bar-zone" aria-hidden="true"></div>
 	<div id="bar">
+		<span id="who-header" class="who">
 		{% for dropdown_item in dropdown_items %}{% if dropdown_item["uid"] == zid | int %}
-		<span class="who"><b>{{ dropdown_item["world_name"] }}</b> &middot; lvl {{ dropdown_item["level"] }}</span>
+		<b>{{ dropdown_item["world_name"] }}</b> &middot; lvl {{ dropdown_item["level"] }}
 		{% endif %}{% endfor %}
+		</span>
+		<span id="res-header" class="who">
 		{% if resources %}
-		<span class="who">Coins {{ resources.get("coins", 0) }} &middot; Cash {{ cash | default(0) }} &middot; Energy {{ energy | default(0) }} &middot; Wood {{ resources.get("wood", 0) }} &middot; Iron {{ resources.get("iron", 0) }} &middot; Oil {{ resources.get("oil", 0) }}</span>
+		Coins {{ resources.get("coins", 0) }} &middot; Cash {{ cash | default(0) }} &middot; Energy {{ energy | default(0) }} &middot; Wood {{ resources.get("wood", 0) }} &middot; Iron {{ resources.get("iron", 0) }} &middot; Oil {{ resources.get("oil", 0) }}
 		{% endif %}
+		</span>
 		<button id="fullscreen" title="Fullscreen">Fullscreen</button>
 		<a href="/save-editor">Edit save</a>
 		<a href="/admin">Admin</a>
@@ -226,6 +227,32 @@
 		// Show the bar briefly on load so it is discoverable, then let it hide.
 		document.body.classList.add("bar-peek");
 		setTimeout(function () { document.body.classList.remove("bar-peek"); }, 2600);
+
+		// Keep header world/level and resources (wood, iron, oil, etc.) up to date.
+		function refreshHeaderResources() {
+			fetch("/admin/status.json", {cache: "no-store"})
+				.then(function (res) { return res.ok ? res.json() : null; })
+				.then(function (s) {
+					if (!s || !s.has_session) return;
+					var whoEl = document.getElementById("who-header");
+					if (whoEl && s.world_name !== null) {
+						whoEl.innerHTML = "<b>" + String(s.world_name).replace(/[<>&]/g, "") + "</b> &middot; lvl " + (s.level ?? 1);
+					}
+					var resEl = document.getElementById("res-header");
+					if (resEl && s.coins !== null) {
+						resEl.textContent = "Coins " + (s.coins ?? 0) +
+							" · Cash " + (s.cash ?? 0) +
+							" · Energy " + (s.energy ?? 0) +
+							" · Wood " + (s.wood ?? 0) +
+							" · Iron " + (s.iron ?? 0) +
+							" · Oil " + (s.oil ?? 0) +
+							" · Alum " + (s.aluminum ?? 0);
+					}
+				})
+				.catch(function () {});
+		}
+		refreshHeaderResources();
+		setInterval(refreshHeaderResources, 4000);
 
 		loadingScreenUpdate();
 	</script>
