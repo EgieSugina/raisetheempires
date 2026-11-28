@@ -1474,7 +1474,7 @@ def init_user():
     # energy_max = 400
     xp = 0
     level = 1
-    zcash = 15
+    zcash = 10000
     energy = 100
     energy_max = 100
 
@@ -2236,6 +2236,8 @@ def perform_world_response(params):
         item_code = item_info[0]
         item_amount = item_info[1]
         item_type = item_info[2]
+        if item_type == "cash":
+            item_amount *= 1000
         perform_world_response["data"]["data"] = {}
         perform_world_response["data"]["data"]["type"] = item_type
         perform_world_response["data"]["data"]["item"] = item_code
