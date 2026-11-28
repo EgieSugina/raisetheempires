@@ -132,8 +132,8 @@ def battle_complete_response(params):
             print("Taken", damage, "damage, player hp:", friendly_strengths[player_unit_id], roll, "after seed", get_seed_w(),get_seed_z(), repr(init_seed))
     else:
         print("Stun skipped turn")
-        player_unit_id = next((i for strength, i in zip(friendly_strengths,range(len(friendly_strengths))) if strength > 0), None)
-        enemy_unit_id = next((i for strength, i in zip(baddie_strengths,range(len(baddie_strengths))) if strength > 0), None)
+        player_unit_id = next((i for strength, i in zip(friendly_strengths,range(len(friendly_strengths))) if strength > 0), 0)
+        enemy_unit_id = next((i for strength, i in zip(baddie_strengths,range(len(baddie_strengths))) if strength > 0), 0)
         ally_target = ("ally", player_unit_id)
         roll = 0
 
@@ -341,7 +341,7 @@ def handle_accurancy_upgrades(crit, direct, friendlies, player_unit_id):
 
 
 def handle_strength_upgrades(strength, unit):
-    research = session['user_object']["userInfo"]["world"]["research"]
+    research = session['user_object']["userInfo"]["world"].get("research", {})
     upgrades = research.get(unit["-code"], [])
     for upgrade in upgrades:
         upgrade_item = lookup_item_by_code(upgrade)
@@ -353,7 +353,7 @@ def handle_strength_upgrades(strength, unit):
             else:
                 strength += int(mod_damage)
                 print("Applying strength upgrade for", mod_damage, "more")
-    return strength
+    return int(round(strength))
 
 
 def handle_shield_upgrades(friendlies, player_unit_id):
