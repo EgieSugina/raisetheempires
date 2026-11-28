@@ -1251,13 +1251,12 @@ def get_unit_max_strength(unit, ally, params=None):
     _, island, map_item = get_current_island(params)
     if has_battle_context() and session["battle"][3].replaying:
         island = session["battle"][3].island
-    if not ally and island != None and "strength" in map_item["island"][island]:
-        strengths = simple_list(map_item["island"][island]["strength"])
-        strength = apply_map_mod_strength(unit, strength, strengths)
-        # print("Mod strenghts",repr(strengths))
-    elif ally:
+    # Client SWF (ZGame.109338) uses base unit -strength on campaign maps like C005
+    # rather than island.strength -mult (e.g. U92=40 on client vs 20.0 on server),
+    # which causes "TResolveBattle: unit strength out of sync".
+    if ally:
         strength = handle_strength_upgrades(strength, unit)
-    return strength
+    return int(strength)
 
 
 # def get_current_island(params):
