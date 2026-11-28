@@ -55,9 +55,12 @@ def create_backup(message):
     session["backup"]['replaced_on'] = timestamp
     session["backup"]['message'] = message
 
+DEFAULT_POSTGRES_URL = "postgresql+psycopg://empires:empires_local_dev@127.0.0.1:5435/raisetheempires"
+
+
 def save_database_uri(root_path, instance_path):
-    env_url = (os.environ.get("DATABASE_URL") or "").strip()
-    if env_url:
+    if os.environ.get("USE_SQLITE") != "1":
+        env_url = (os.environ.get("DATABASE_URL") or DEFAULT_POSTGRES_URL).strip()
         if env_url.startswith("postgres://"):
             env_url = "postgresql+psycopg://" + env_url[len("postgres://"):]
         elif env_url.startswith("postgresql://"):

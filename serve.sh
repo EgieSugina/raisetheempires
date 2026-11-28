@@ -25,10 +25,17 @@ fi
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
 
-if [ -z "${SKIP_INSTALL:-}" ] && { [ -n "${NEED_INSTALL:-}" ] || ! python -c "import flask, flask_socketio, pyamf" 2>/dev/null; }; then
+if [ -z "${SKIP_INSTALL:-}" ] && { [ -n "${NEED_INSTALL:-}" ] || ! python -c "import flask, flask_socketio, pyamf, psycopg" 2>/dev/null; }; then
     echo ">> installing dependencies from requirements.txt"
     python -m pip install --upgrade pip
     python -m pip install -r requirements.txt
+fi
+
+if [ -z "${DATABASE_URL:-}" ] && [ "${USE_SQLITE:-0}" != "1" ] && command -v docker >/dev/null 2>&1; then
+    if ! docker ps --format '{{.Names}}' | grep -qx 'raisetheempires-postgres'; then
+        echo ">> starting PostgreSQL container"
+        docker compose up -d
+    fi
 fi
 
 # When running from source the save.db lives in instance/, but the server only

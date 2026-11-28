@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: raisetheempires-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: raisetheempires
+      POSTGRES_USER: empires
+      POSTGRES_PASSWORD: empires_local_dev
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U empires -d raisetheempires"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
