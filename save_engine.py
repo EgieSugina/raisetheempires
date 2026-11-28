@@ -137,8 +137,6 @@ def exception_handler(exc_type, exc_value, exc_traceback):
         return
 
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
-    if crash_log:
-        text = editor.edit(filename=os.path.join(log_path(), "log.txt"))
 
 # logger = logging.getLogger(__name__)
 # handler = logging.StreamHandler(stream=sys.stdout)
@@ -201,7 +199,7 @@ def store_session(save):
             session_id=save["session_id"]).first()
 
     record.data = pickle.dumps(dict(save))
-    sess_int.db.session.commit()
+    db.session.commit()
 
 
 def validate_save(save, blank_allowed = False):
