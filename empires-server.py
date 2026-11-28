@@ -2064,7 +2064,14 @@ def post_gateway():
         "data": resps
     }
 
-    req = remoting.Response(emsg)
+    def _unshare_amf(obj):
+        if type(obj) is dict:
+            return {k: _unshare_amf(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_unshare_amf(v) for v in obj]
+        return obj
+
+    req = remoting.Response(_unshare_amf(emsg))
     ev = remoting.Envelope(pyamf.AMF0)
     ev[resp_msg.bodies[0][0]] = req
     #  print(ev.headers)
