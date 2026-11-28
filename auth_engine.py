@@ -122,3 +122,43 @@ def attach_save(account, sid):
     """Remember which save row belongs to this account."""
     account.session_id = SESSION_KEY_PREFIX + sid
     db.session.commit()
+
+
+class GiftDrop(db.Model):
+    __tablename__ = "gift_drops"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(120), nullable=False)
+    cash = db.Column(db.Integer, default=0, nullable=False)
+    coins = db.Column(db.Integer, default=0, nullable=False)
+    wood = db.Column(db.Integer, default=0, nullable=False)
+    oil = db.Column(db.Integer, default=0, nullable=False)
+    iron = db.Column(db.Integer, default=0, nullable=False)
+    energy = db.Column(db.Integer, default=0, nullable=False)
+    item_code = db.Column(db.String(32), default="", nullable=False)
+    item_count = db.Column(db.Integer, default=0, nullable=False)
+    max_claims = db.Column(db.Integer, default=10, nullable=False)
+    created_by = db.Column(db.String(40), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class GiftClaim(db.Model):
+    __tablename__ = "gift_claims"
+    __table_args__ = (db.UniqueConstraint("drop_id", "account_id", name="uq_drop_account"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    drop_id = db.Column(db.Integer, nullable=False, index=True)
+    account_id = db.Column(db.Integer, nullable=False, index=True)
+    claimed_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class ChatMessage(db.Model):
+    __tablename__ = "chat_messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, nullable=False, index=True)
+    sender_name = db.Column(db.String(40), nullable=False)
+    sender_role = db.Column(db.String(20), default="player", nullable=False)
+    message = db.Column(db.String(400), nullable=False)
+    gift_drop_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)

@@ -294,6 +294,27 @@
 				Backed up before each change.</p>
 		</section>
 
+		<section class="card">
+			<h2>World Gift Drop (First N Players)</h2>
+			<div class="row">
+				<label class="lbl">Cash</label><input id="gd-cash" type="number" class="narrow" value="0" />
+				<label class="lbl">Coins</label><input id="gd-coins" type="number" class="narrow" value="0" />
+				<label class="lbl">Wood</label><input id="gd-wood" type="number" class="narrow" value="0" />
+			</div>
+			<div class="row">
+				<label class="lbl">Oil</label><input id="gd-oil" type="number" class="narrow" value="0" />
+				<label class="lbl">Iron</label><input id="gd-iron" type="number" class="narrow" value="0" />
+				<label class="lbl">Energy</label><input id="gd-energy" type="number" class="narrow" value="0" />
+			</div>
+			<div class="row">
+				<label class="lbl">Unit/Item</label><input id="gd-item" class="narrow" placeholder="e.g. U01" />
+				<label class="lbl">Qty</label><input id="gd-qty" type="number" class="narrow" value="1" />
+				<label class="lbl">Max claims</label><input id="gd-max" type="number" class="narrow" value="10" />
+				<button id="gd-send">Drop to World Chat</button>
+			</div>
+			<p class="hint">Appears in World Chat for all players; only the first N accounts can claim once each.</p>
+		</section>
+
 		<section class="card full">
 			<div class="row" style="justify-content:space-between; margin-bottom:10px">
 				<h2 style="margin:0">Users</h2>
@@ -624,6 +645,20 @@
 			energy: document.getElementById('ug-energy').value,
 			item_code: document.getElementById('ug-item-code').value,
 			item_count: document.getElementById('ug-item-count').value
+		});
+	});
+
+	document.getElementById('gd-send').addEventListener('click', function () {
+		apiJson('/admin/drop-gift', {
+			cash: document.getElementById('gd-cash').value,
+			coins: document.getElementById('gd-coins').value,
+			wood: document.getElementById('gd-wood').value,
+			oil: document.getElementById('gd-oil').value,
+			iron: document.getElementById('gd-iron').value,
+			energy: document.getElementById('gd-energy').value,
+			item_code: document.getElementById('gd-item').value,
+			item_count: document.getElementById('gd-qty').value,
+			max_claims: document.getElementById('gd-max').value
 		});
 	});
 

@@ -173,6 +173,7 @@ ADMIN_EXACT_PATHS = {
     "/admin",
     "/admin/shutdown",
     "/admin/shutdown/cancel",
+    "/admin/drop-gift",
     "/save-editor",
     "/list_session",
     "/wipe_session",
@@ -601,6 +602,168 @@ def admin_shutdown():
 def admin_shutdown_cancel():
     cancel_shutdown()
     return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
+def _drop_summary(drop):
+    parts = []
+    for label, val in (("Cash", drop.cash), ("Coins", drop.coins), ("Wood", drop.wood),
+                       ("Oil", drop.oil), ("Iron", drop.iron), ("Energy", drop.energy)):
+        if val > 0:
+            parts.append(f"+{val} {label}")
+    if drop.item_code and drop.item_count > 0:
+        parts.append(f"+{drop.item_count}x {drop.item_code}")
+    return ", ".join(parts) or "Gift"
+
+
+@app.route("/chat/messages.json")
+def chat_messages_json():
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    msgs = auth_engine.ChatMessage.query.order_by(auth_engine.ChatMessage.id.desc()).limit(50).all()
+    msgs.reverse()
+    drop_ids = [m.gift_drop_id for m in msgs if m.gift_drop_id]
+    drops_by_id = {}
+    claims_count = {}
+    my_claims = set()
+    if drop_ids:
+        for d in auth_engine.GiftDrop.query.filter(auth_engine.GiftDrop.id.in_(drop_ids)).all():
+            drops_by_id[d.id] = d
+            claims_count[d.id] = auth_engine.GiftClaim.query.filter_by(drop_id=d.id).count()
+        my_claims = {
+            c.drop_id for c in auth_engine.GiftClaim.query.filter(
+                auth_engine.GiftClaim.drop_id.in_(drop_ids),
+                auth_engine.GiftClaim.account_id == acc.id
+            ).all()
+        }
+    out = []
+    for m in msgs:
+        item = {
+            "id": m.id,
+            "sender_name": m.sender_name,
+            "sender_role": m.sender_role,
+            "message": m.message,
+            "time": m.created_at.strftime("%H:%M") if m.created_at else "",
+            "drop": None,
+        }
+        if m.gift_drop_id and m.gift_drop_id in drops_by_id:
+            d = drops_by_id[m.gift_drop_id]
+            cnt = claims_count.get(d.id, 0)
+            item["drop"] = {
+                "id": d.id,
+                "title": d.title,
+                "summary": _drop_summary(d),
+                "claims_count": cnt,
+                "max_claims": d.max_claims,
+                "already_claimed": d.id in my_claims,
+                "remaining": max(0, d.max_claims - cnt),
+            }
+        out.append(item)
+    return Response(json.dumps({"messages": out}), mimetype="application/json")
+
+
+@app.route("/chat/send", methods=['POST'])
+def chat_send():
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    text = (data.get("message") or "").strip()
+    if not text:
+        return Response(json.dumps({"error": "Message empty"}), status=400, mimetype="application/json")
+    sender_name = (get_dict(session, "user_object", "userInfo").get("worldName")
+                   if session.get("user_object") else None) or acc.island_name or acc.username
+    msg = auth_engine.ChatMessage(
+        account_id=acc.id,
+        sender_name=sender_name[:40],
+        sender_role=acc.role,
+        message=text[:300],
+    )
+    db.session.add(msg)
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "id": msg.id}), mimetype="application/json")
+
+
+@app.route("/admin/drop-gift", methods=['POST'])
+def admin_drop_gift():
+    acc = _current_account()
+    data = request.get_json(silent=True) or {}
+    cash = max(0, int(data.get("cash") or 0))
+    coins = max(0, int(data.get("coins") or 0))
+    wood = max(0, int(data.get("wood") or 0))
+    oil = max(0, int(data.get("oil") or 0))
+    iron = max(0, int(data.get("iron") or 0))
+    energy = max(0, int(data.get("energy") or 0))
+    item_code = (data.get("item_code") or "").strip()[:32]
+    item_count = max(0, int(data.get("item_count") or 0)) if item_code else 0
+    max_claims = max(1, min(1000, int(data.get("max_claims") or 10)))
+
+    if not any([cash, coins, wood, oil, iron, energy, item_count]):
+        return Response(json.dumps({"error": "Specify at least one reward"}), status=400, mimetype="application/json")
+
+    note = (data.get("note") or "").strip()
+    drop = auth_engine.GiftDrop(
+        title=note[:120] if note else f"Gift Drop ({max_claims} orang pertama)",
+        cash=cash, coins=coins, wood=wood, oil=oil, iron=iron, energy=energy,
+        item_code=item_code, item_count=item_count,
+        max_claims=max_claims,
+        created_by=acc.username if acc else "admin",
+    )
+    db.session.add(drop)
+    db.session.flush()
+
+    msg = auth_engine.ChatMessage(
+        account_id=acc.id,
+        sender_name=acc.island_name or acc.username,
+        sender_role="admin",
+        message=f"[GIFT DROP] {_drop_summary(drop)} — {max_claims} orang pertama!",
+        gift_drop_id=drop.id,
+    )
+    db.session.add(msg)
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "drop_id": drop.id}), mimetype="application/json")
+
+
+@app.route("/chat/claim/<int:drop_id>", methods=['POST'])
+def chat_claim_drop(drop_id):
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    if not session.get("user_object"):
+        return Response(json.dumps({"error": "Load game first before claiming"}), status=400, mimetype="application/json")
+
+    drop = auth_engine.GiftDrop.query.filter_by(id=drop_id).with_for_update().first()
+    if drop is None:
+        return Response(json.dumps({"error": "Gift drop not found"}), status=404, mimetype="application/json")
+
+    if auth_engine.GiftClaim.query.filter_by(drop_id=drop.id, account_id=acc.id).first() is not None:
+        return Response(json.dumps({"error": "Kamu sudah claim gift ini"}), status=400, mimetype="application/json")
+
+    cnt = auth_engine.GiftClaim.query.filter_by(drop_id=drop.id).count()
+    if cnt >= drop.max_claims:
+        return Response(json.dumps({"error": "Kuota gift sudah habis"}), status=400, mimetype="application/json")
+
+    player = session["user_object"]["userInfo"]["player"]
+    res = session["user_object"]["userInfo"]["world"]["resources"]
+    if drop.cash:
+        player["cash"] = int(player.get("cash", 0)) + drop.cash
+    if drop.energy:
+        player["energy"] = int(player.get("energy", 0)) + drop.energy
+    for k, v in (("coins", drop.coins), ("wood", drop.wood), ("oil", drop.oil), ("iron", drop.iron)):
+        if v:
+            res[k] = int(res.get(k, 0)) + v
+    if drop.item_code and drop.item_count > 0:
+        inv = player.setdefault("inventory", {}).setdefault("items", {})
+        inv[drop.item_code] = int(inv.get(drop.item_code, 0)) + drop.item_count
+
+    db.session.add(auth_engine.GiftClaim(drop_id=drop.id, account_id=acc.id))
+    db.session.commit()
+    return Response(json.dumps({
+        "ok": True,
+        "summary": _drop_summary(drop),
+        "claims_count": cnt + 1,
+        "max_claims": drop.max_claims,
+    }), mimetype="application/json")
 
 
 def _find_save_for_account(account):

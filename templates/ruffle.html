@@ -221,6 +221,143 @@
 		.drawer-actions a.logout { margin-top: 6px; background: rgba(224, 112, 112, .08); border-color: rgba(224, 112, 112, .3); color: #f5a3a3; }
 		.drawer-actions a.logout:hover { background: rgba(224, 112, 112, .18); border-color: #e07070; color: #ffd6d6; }
 
+		.chat-box {
+			flex: 1 1 auto;
+			min-height: 140px;
+			display: flex;
+			flex-direction: column;
+			background: rgba(255, 255, 255, .03);
+			border: 1px solid rgba(255, 255, 255, .08);
+			border-radius: 10px;
+			overflow: hidden;
+		}
+		.chat-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 7px 10px;
+			border-bottom: 1px solid rgba(255, 255, 255, .08);
+			font-size: 11.5px;
+			font-weight: 600;
+			color: #aab1ba;
+			text-transform: uppercase;
+			letter-spacing: .04em;
+		}
+		.chat-drop-btn {
+			background: rgba(230, 177, 4, .16);
+			border: 1px solid rgba(230, 177, 4, .45);
+			color: #f4cf58;
+			border-radius: 6px;
+			padding: 2px 7px;
+			font-size: 11px;
+			cursor: pointer;
+		}
+		#chat-drop-form {
+			display: none;
+			padding: 8px;
+			border-bottom: 1px solid rgba(255, 255, 255, .08);
+			background: rgba(0, 0, 0, .25);
+			gap: 5px;
+			flex-wrap: wrap;
+		}
+		#chat-drop-form.open { display: flex; }
+		#chat-drop-form input {
+			width: calc(50% - 3px);
+			padding: 4px 6px;
+			font-size: 11.5px;
+			border-radius: 5px;
+			border: 1px solid rgba(255, 255, 255, .14);
+			background: rgba(16, 19, 28, .9);
+			color: #fff;
+		}
+		#chat-drop-send {
+			width: 100%;
+			padding: 5px;
+			font-size: 12px;
+			font-weight: 600;
+			border-radius: 5px;
+			border: 1px solid rgba(230, 177, 4, .6);
+			background: rgba(230, 177, 4, .22);
+			color: #ffe285;
+			cursor: pointer;
+		}
+		#chat-list {
+			flex: 1 1 auto;
+			overflow-y: auto;
+			padding: 8px 10px;
+			display: flex;
+			flex-direction: column;
+			gap: 7px;
+			font-size: 12.5px;
+		}
+		.chat-msg { line-height: 1.35; word-break: break-word; color: #dbe1ea; }
+		.chat-msg .meta { font-size: 11px; color: #7f8896; margin-right: 4px; }
+		.chat-msg .who { font-weight: 600; color: #fff; }
+		.chat-msg .tag-adm {
+			display: inline-block;
+			font-size: 9.5px;
+			padding: 1px 4px;
+			border-radius: 4px;
+			background: rgba(230, 177, 4, .2);
+			color: #f4cf58;
+			margin-right: 4px;
+			vertical-align: middle;
+		}
+		.drop-card {
+			margin-top: 4px;
+			padding: 7px 9px;
+			border-radius: 7px;
+			background: rgba(230, 177, 4, .1);
+			border: 1px solid rgba(230, 177, 4, .35);
+		}
+		.drop-card .sum { font-size: 12px; font-weight: 600; color: #ffe285; }
+		.drop-card .claim-row { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; gap: 6px; }
+		.drop-card .cnt { font-size: 11px; color: #c7b889; }
+		.drop-card button {
+			padding: 3px 9px;
+			font-size: 11.5px;
+			font-weight: 600;
+			border-radius: 5px;
+			border: 1px solid rgba(108, 192, 131, .55);
+			background: rgba(108, 192, 131, .2);
+			color: #9be8b0;
+			cursor: pointer;
+		}
+		.drop-card button:disabled {
+			opacity: .55;
+			cursor: default;
+			border-color: rgba(255, 255, 255, .15);
+			background: rgba(255, 255, 255, .05);
+			color: #9aa1aa;
+		}
+		.chat-input {
+			display: flex;
+			gap: 6px;
+			padding: 7px;
+			border-top: 1px solid rgba(255, 255, 255, .08);
+		}
+		.chat-input input {
+			flex: 1 1 auto;
+			min-width: 0;
+			padding: 6px 8px;
+			border-radius: 6px;
+			border: 1px solid rgba(255, 255, 255, .14);
+			background: rgba(0, 0, 0, .28);
+			color: #fff;
+			font: inherit;
+			font-size: 12.5px;
+		}
+		.chat-input button {
+			padding: 6px 10px;
+			border-radius: 6px;
+			border: 1px solid rgba(122, 154, 214, .5);
+			background: rgba(122, 154, 214, .2);
+			color: #dce6f9;
+			font-size: 12px;
+			font-weight: 600;
+			cursor: pointer;
+		}
+
 		#shutdown-banner {
 			position: fixed;
 			top: 12px;
@@ -311,6 +448,31 @@
 			<div class="stat-box"><span class="k">Wood</span><span class="v" id="st-wood">{{ resources.get("wood", 0) if resources else 0 }}</span></div>
 			<div class="stat-box"><span class="k">Iron</span><span class="v" id="st-iron">{{ resources.get("iron", 0) if resources else 0 }}</span></div>
 			<div class="stat-box"><span class="k">Oil</span><span class="v" id="st-oil">{{ resources.get("oil", 0) if resources else 0 }}</span></div>
+		</div>
+		<div class="chat-box">
+			<div class="chat-head">
+				<span>World Chat</span>
+				{% if is_admin %}
+				<button type="button" id="chat-drop-toggle" class="chat-drop-btn">+ Drop Gift</button>
+				{% endif %}
+			</div>
+			{% if is_admin %}
+			<div id="chat-drop-form">
+				<input id="cd-cash" type="number" placeholder="Cash" />
+				<input id="cd-coins" type="number" placeholder="Coins" />
+				<input id="cd-wood" type="number" placeholder="Wood" />
+				<input id="cd-oil" type="number" placeholder="Oil" />
+				<input id="cd-item" type="text" placeholder="Unit/Item (U01)" />
+				<input id="cd-qty" type="number" placeholder="Qty" value="1" />
+				<input id="cd-max" type="number" placeholder="Max claim (10)" value="10" style="width:100%" />
+				<button type="button" id="chat-drop-send">Drop ke Chat</button>
+			</div>
+			{% endif %}
+			<div id="chat-list"></div>
+			<form class="chat-input" id="chat-form">
+				<input id="chat-msg" type="text" maxlength="300" placeholder="Tulis pesan..." autocomplete="off" />
+				<button type="submit">Kirim</button>
+			</form>
 		</div>
 		<div class="drawer-actions">
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
@@ -424,6 +586,103 @@
 		}
 		refreshHeaderResources();
 		setInterval(refreshHeaderResources, 4000);
+
+		var chatList = document.getElementById("chat-list");
+		function loadChat() {
+			fetch("/chat/messages.json", {cache: "no-store"})
+				.then(function (r) { return r.ok ? r.json() : null; })
+				.then(function (data) {
+					if (!data || !data.messages) return;
+					var atBottom = chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight < 30;
+					chatList.innerHTML = "";
+					data.messages.forEach(function (m) {
+						var div = document.createElement("div");
+						div.className = "chat-msg";
+						var badge = m.sender_role === "admin" ? '<span class="tag-adm">ADMIN</span>' : '';
+						div.innerHTML = '<span class="meta">' + m.time + '</span>' + badge +
+							'<span class="who"></span>: <span class="txt"></span>';
+						div.querySelector(".who").textContent = m.sender_name;
+						div.querySelector(".txt").textContent = m.message;
+						if (m.drop) {
+							var d = m.drop;
+							var card = document.createElement("div");
+							card.className = "drop-card";
+							var btnText = d.already_claimed ? "Claimed" : (d.remaining <= 0 ? "Habis" : "Claim");
+							var disabled = (d.already_claimed || d.remaining <= 0) ? " disabled" : "";
+							card.innerHTML = '<div class="sum"></div><div class="claim-row"><span class="cnt">' +
+								d.claims_count + '/' + d.max_claims + ' claimed</span><button type="button" data-drop="' +
+								d.id + '"' + disabled + '>' + btnText + '</button></div>';
+							card.querySelector(".sum").textContent = d.summary;
+							div.appendChild(card);
+						}
+						chatList.appendChild(div);
+					});
+					if (atBottom) chatList.scrollTop = chatList.scrollHeight;
+				})
+				.catch(function () {});
+		}
+
+		document.getElementById("chat-form").addEventListener("submit", function (e) {
+			e.preventDefault();
+			var inp = document.getElementById("chat-msg");
+			var txt = inp.value.trim();
+			if (!txt) return;
+			inp.value = "";
+			fetch("/chat/send", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({message: txt})
+			}).then(function () { loadChat(); });
+		});
+
+		chatList.addEventListener("click", function (e) {
+			var btn = e.target.closest("button[data-drop]");
+			if (!btn || btn.disabled) return;
+			btn.disabled = true;
+			fetch("/chat/claim/" + btn.dataset.drop, {method: "POST"})
+				.then(function (r) { return r.json().then(function (j) { return {ok: r.ok, j: j}; }); })
+				.then(function (res) {
+					if (!res.ok) {
+						alert(res.j.error || "Gagal claim");
+					} else {
+						refreshHeaderResources();
+						alert("Berhasil claim: " + res.j.summary + " (refresh game jika item/resource belum muncul di canvas)");
+					}
+					loadChat();
+				});
+		});
+
+		var dropToggle = document.getElementById("chat-drop-toggle");
+		if (dropToggle) {
+			dropToggle.addEventListener("click", function () {
+				document.getElementById("chat-drop-form").classList.toggle("open");
+			});
+			document.getElementById("chat-drop-send").addEventListener("click", function () {
+				fetch("/admin/drop-gift", {
+					method: "POST",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({
+						cash: document.getElementById("cd-cash").value,
+						coins: document.getElementById("cd-coins").value,
+						wood: document.getElementById("cd-wood").value,
+						oil: document.getElementById("cd-oil").value,
+						item_code: document.getElementById("cd-item").value,
+						item_count: document.getElementById("cd-qty").value,
+						max_claims: document.getElementById("cd-max").value
+					})
+				}).then(function (r) { return r.json().then(function (j) { return {ok: r.ok, j: j}; }); })
+				.then(function (res) {
+					if (!res.ok) alert(res.j.error || "Gagal drop gift");
+					else {
+						document.getElementById("chat-drop-form").classList.remove("open");
+						loadChat();
+					}
+				});
+			});
+		}
+
+		loadChat();
+		setInterval(loadChat, 3500);
 
 		loadingScreenUpdate();
 	</script>
