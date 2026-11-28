@@ -23,13 +23,20 @@ def battle_complete_response(params):
     meta = {"newPVE": 0}
 
     if 'id' in params:
-        [player_unit_id, enemy_unit_id] = params['id']  #player turn
+        raw_id = params['id']
+        if isinstance(raw_id, dict):
+            player_unit_id, enemy_unit_id = raw_id[0], raw_id[1]
+        else:
+            [player_unit_id, enemy_unit_id] = raw_id  #player turn
         player_turn = True
     else:
         player_turn = False
         enemy_unit_id, _, player_unit_id = ai_best_attack(friendlies, friendly_strengths, baddies, baddie_strengths, active_consumables)
 
     if enemy_unit_id is not None and player_unit_id is not None:
+        if not (0 <= enemy_unit_id < len(baddies)) or not (0 <= player_unit_id < len(friendlies)):
+            raise StaleBattleReference(
+                f"Unit index out of range (player={player_unit_id}/{len(friendlies)}, enemy={enemy_unit_id}/{len(baddies)})")
         ally_target = ("ally", player_unit_id)
         enemy_target = ("enemy", enemy_unit_id)
         first_target = ally_target if player_turn else enemy_target
