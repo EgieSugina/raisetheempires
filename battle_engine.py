@@ -370,7 +370,9 @@ def handle_shield_upgrades(friendlies, player_unit_id):
 def _amf_list(val):
     """Unpack Ruffle AMF0 integer-keyed dict {0: a, 1: b} or list into a list."""
     if isinstance(val, dict):
-        return [val[k] for k in sorted(val.keys())]
+        if all(isinstance(k, int) for k in val.keys()):
+            return [val[k] for k in sorted(val.keys())]
+        return [val]
     return list(val or [])
 
 
