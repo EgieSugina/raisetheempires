@@ -84,6 +84,7 @@ def _build_bot_save(bot):
         "user_object": {
             "userInfo": {
                 "worldName": bot["island_name"],
+                "titanName": "Titan",
                 "player": {
                     "uid": bot["zid"],
                     "level": bot["level"],
@@ -92,6 +93,7 @@ def _build_bot_save(bot):
                     "energy": 100,
                     "energyMax": 100,
                     "playerResourceType": 0,
+                    "expansions": {"data": [0, 0, 0, 0, 805306368, 6291456, 49152, 0, 0, 0, 0]},
                     "socialXpGood": 0,
                     "socialLevelGood": 1,
                     "socialXpBad": 500,
@@ -100,7 +102,7 @@ def _build_bot_save(bot):
                 },
                 "world": {
                     "objects": copy.deepcopy(objects),
-                    "roads": copy.deepcopy(roads),
+                    "roadData": copy.deepcopy(roads),
                     "resources": {
                         "coins": 50000, "oil": 5000, "wood": 5000,
                         "aluminum": 1000, "copper": 0, "gold": 0, "iron": 0, "uranium": 0,
@@ -111,6 +113,7 @@ def _build_bot_save(bot):
                     "rewardRandSeedW": 67890,
                 },
             },
+            "visitorHelpRequests": {},
             "pvp": {
                 "invaders": {"pve": {"quest": True}},
                 "gpInv": None,
@@ -123,6 +126,24 @@ def _build_bot_save(bot):
         "battles": [],
         "battle_status": {},
     }
+
+
+def _repair_bot_save(save, bot):
+    ui = save["user_object"]["userInfo"]
+    changed = False
+    if "titanName" not in ui:
+        ui["titanName"] = "Titan"
+        changed = True
+    if "expansions" not in ui["player"]:
+        ui["player"]["expansions"] = {"data": [0, 0, 0, 0, 805306368, 6291456, 49152, 0, 0, 0, 0]}
+        changed = True
+    if "roadData" not in ui["world"]:
+        ui["world"]["roadData"] = ui["world"].pop("roads", copy.deepcopy(initial_island["roads"]))
+        changed = True
+    if "visitorHelpRequests" not in save["user_object"]:
+        save["user_object"]["visitorHelpRequests"] = {}
+        changed = True
+    return changed
 
 
 def ensure_bot_accounts():
@@ -153,6 +174,11 @@ def ensure_bot_accounts():
             save_data = pickle.dumps(_build_bot_save(bot))
             db.session.add(sess_model(session_id=sid, data=save_data, expiry=datetime(2099, 1, 1)))
             changed = True
+        else:
+            existing = pickle.loads(rec.data)
+            if _repair_bot_save(existing, bot):
+                rec.data = pickle.dumps(existing)
+                changed = True
     if changed:
         db.session.commit()
     get_bot_config()

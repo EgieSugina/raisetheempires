@@ -12,6 +12,7 @@ if not os.environ.get('EDITOR'):
     os.environ["EDITOR"] = 'notepad'  # system specific!
 
 import editor
+import bot_engine
 from tendo import singleton
 import init_settings as settings
 
@@ -1182,6 +1183,25 @@ def admin_user_delete(account_id):
             db.session.delete(rec)
     db.session.commit()
     return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
+@app.route("/admin/bots.json", methods=['GET'])
+def admin_bots_json():
+    return Response(json.dumps(bot_engine.get_bots_status()), mimetype="application/json")
+
+
+@app.route("/admin/bots/toggle", methods=['POST'])
+def admin_bots_toggle():
+    cfg = bot_engine.get_bot_config()
+    cfg.enabled = not cfg.enabled
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "enabled": cfg.enabled}), mimetype="application/json")
+
+
+@app.route("/admin/bots/trigger", methods=['POST'])
+def admin_bots_trigger():
+    res = bot_engine.run_bot_invasions(force=True, announce=True)
+    return Response(json.dumps({"ok": True, **res}), mimetype="application/json")
 
 
 @app.route("/save-editor", methods=['GET'])
@@ -2598,6 +2618,7 @@ def friend_response():
 
 
 def invader_response():
+    bot_engine.maybe_tick_bots()
     invader_response = {"errorType": 0, "userId": 1, "metadata": {"newPVE": 0},
                         "data": [invader_entry(k[1:]) for k, v in session['user_object']["pvp"]["invaders"].items() if k != "pve"]}
     return invader_response
@@ -3296,12 +3317,12 @@ def load_world_response(params):
                 ally["titanName"] = allies[str(params[0])]["titanName"]
         else:
             [save] = [save for save in get_saves() if str(save['user_object']["userInfo"]["player"]["uid"]) == str(params[0])]
-            ally["world"]["objects"] = save['user_object']["userInfo"]["world"]["objects"]
-            ally["world"]["roadData"] = save['user_object']["userInfo"]["world"]["roadData"]
-            ally["expansions"] = save['user_object']["userInfo"]["player"]["expansions"]
-            ally["worldName"] = save['user_object']["userInfo"]["worldName"]
-            ally["titanName"] = save['user_object']["userInfo"]["titanName"]
-            ally["pvpInvaders"] = save['user_object']["pvp"]["invaders"]
+            ally["world"]["objects"] = save['user_object']["userInfo"]["world"].get("objects", [])
+            ally["world"]["roadData"] = save['user_object']["userInfo"]["world"].get("roadData", [])
+            ally["expansions"] = save['user_object']["userInfo"]["player"].get("expansions", {"data": [0,0,0,0,805306368,6291456,49152,0,0,0,0]})
+            ally["worldName"] = save['user_object']["userInfo"].get("worldName", "Empire")
+            ally["titanName"] = save['user_object']["userInfo"].get("titanName", "Titan")
+            ally["pvpInvaders"] = (save['user_object'].get("pvp") or {}).get("invaders", {"pve": {"quest": True}})
 
         # ally["gf"] = False
         # ally["yimf"] = ""
@@ -3813,6 +3834,8 @@ if __name__ == '__main__':
         db.create_all()  # accounts table; flask-session makes its own
         auth_engine.ensure_account_columns()
     app.session_interface = AssetSkippingSessionInterface(app.session_interface)
+    with app.app_context():
+        bot_engine.ensure_bot_accounts()
     # session.app.session_interface.db.create_all()
     # app.session_interface.db.create_all()
     # db.create_all()
