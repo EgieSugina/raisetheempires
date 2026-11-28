@@ -844,6 +844,95 @@ def admin_ticket_reply(ticket_id):
     return Response(json.dumps({"ok": True, "ticket": _serialize_ticket(t)}), mimetype="application/json")
 
 
+@app.route("/friends/list.json")
+def friends_list_json():
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    rows = auth_engine.Friendship.query.filter(
+        (auth_engine.Friendship.requester_id == acc.id) | (auth_engine.Friendship.addressee_id == acc.id)
+    ).order_by(auth_engine.Friendship.id.desc()).all()
+    other_ids = {r.addressee_id if r.requester_id == acc.id else r.requester_id for r in rows}
+    accounts_by_id = {
+        a.id: a for a in auth_engine.Account.query.filter(auth_engine.Account.id.in_(other_ids)).all()
+    } if other_ids else {}
+
+    friends, incoming, outgoing = [], [], []
+    for r in rows:
+        other_id = r.addressee_id if r.requester_id == acc.id else r.requester_id
+        other = accounts_by_id.get(other_id)
+        if not other:
+            continue
+        item = {"id": r.id, "account_id": other.id, "username": other.username, "island_name": other.island_name}
+        if r.status == "accepted":
+            friends.append(item)
+        elif r.addressee_id == acc.id:
+            incoming.append(item)
+        else:
+            outgoing.append(item)
+    return Response(json.dumps({"friends": friends, "incoming": incoming, "outgoing": outgoing}), mimetype="application/json")
+
+
+@app.route("/friends/request", methods=['POST'])
+def friends_request_create():
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    data = request.get_json(silent=True) or {}
+    target_name = auth_engine.normalise_username(data.get("username"))
+    if not target_name:
+        return Response(json.dumps({"error": "Masukkan username"}), status=400, mimetype="application/json")
+    target = auth_engine.find_account(target_name)
+    if target is None:
+        return Response(json.dumps({"error": "User tidak ditemukan"}), status=404, mimetype="application/json")
+    if target.id == acc.id:
+        return Response(json.dumps({"error": "Tidak bisa add diri sendiri"}), status=400, mimetype="application/json")
+
+    existing = auth_engine.Friendship.query.filter(
+        ((auth_engine.Friendship.requester_id == acc.id) & (auth_engine.Friendship.addressee_id == target.id)) |
+        ((auth_engine.Friendship.requester_id == target.id) & (auth_engine.Friendship.addressee_id == acc.id))
+    ).first()
+    if existing is not None:
+        if existing.status == "accepted":
+            return Response(json.dumps({"error": "Sudah berteman"}), status=400, mimetype="application/json")
+        if existing.addressee_id == acc.id:
+            existing.status = "accepted"
+            db.session.commit()
+            return Response(json.dumps({"ok": True, "auto_accepted": True}), mimetype="application/json")
+        return Response(json.dumps({"error": "Friend request sudah dikirim"}), status=400, mimetype="application/json")
+
+    fr = auth_engine.Friendship(requester_id=acc.id, addressee_id=target.id, status="pending")
+    db.session.add(fr)
+    db.session.commit()
+    return Response(json.dumps({"ok": True, "id": fr.id}), mimetype="application/json")
+
+
+@app.route("/friends/<int:req_id>/accept", methods=['POST'])
+def friends_request_accept(req_id):
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    fr = db.session.get(auth_engine.Friendship, req_id)
+    if fr is None or fr.addressee_id != acc.id:
+        return Response(json.dumps({"error": "Request not found"}), status=404, mimetype="application/json")
+    fr.status = "accepted"
+    db.session.commit()
+    return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
+@app.route("/friends/<int:req_id>/remove", methods=['POST'])
+def friends_request_remove(req_id):
+    acc = _current_account()
+    if acc is None or acc.is_suspended:
+        return Response(json.dumps({"error": "Login required"}), status=401, mimetype="application/json")
+    fr = db.session.get(auth_engine.Friendship, req_id)
+    if fr is None or (fr.requester_id != acc.id and fr.addressee_id != acc.id):
+        return Response(json.dumps({"error": "Not found"}), status=404, mimetype="application/json")
+    db.session.delete(fr)
+    db.session.commit()
+    return Response(json.dumps({"ok": True}), mimetype="application/json")
+
+
 def _find_save_for_account(account):
     """Return the decoded save dict for an Account, or None."""
     if not account or not account.session_id:
@@ -3344,8 +3433,8 @@ def crew_request_response(params):
         max_buyable_slots = int(crewTemplate["-numUnbuyableSlots"])
         num_slots = len(crewTemplate["position"])
 
-        # Empty slots are automatically filled.
-        auto_accept_friends = [f for f in friends if str(f) in allies and allies[str(f)].get("neighbor")] # only neighbor allies can be added
+        # Empty slots are automatically filled (NPC neighbors + real player friends).
+        auto_accept_friends = [f for f in friends if (str(f) in allies and allies[str(f)].get("neighbor")) or str(f).lstrip("-").isdigit()]
         avail_slots = max(min(num_slots - len(current_crew), num_slots), 0)
         new_crew = current_crew + auto_accept_friends[:avail_slots]
         building["crewInfo"] = [str(x) for x in new_crew] # string needed, so that no friend is 'deleted' on display

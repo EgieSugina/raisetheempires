@@ -177,3 +177,14 @@ class SupportTicket(db.Model):
     admin_reply = db.Column(db.Text, default="", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class Friendship(db.Model):
+    __tablename__ = "friendships"
+    __table_args__ = (db.UniqueConstraint("requester_id", "addressee_id", name="uq_friend_pair"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    requester_id = db.Column(db.Integer, nullable=False, index=True)
+    addressee_id = db.Column(db.Integer, nullable=False, index=True)
+    status = db.Column(db.String(20), default="pending", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)

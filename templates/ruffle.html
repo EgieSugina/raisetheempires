@@ -358,7 +358,7 @@
 			cursor: pointer;
 		}
 
-		#ticket-modal {
+		#ticket-modal, #friends-modal {
 			position: fixed;
 			inset: 0;
 			z-index: 45;
@@ -369,7 +369,14 @@
 			backdrop-filter: blur(4px);
 			padding: 16px;
 		}
-		#ticket-modal.open { display: flex; }
+		#ticket-modal.open, #friends-modal.open { display: flex; }
+		.f-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; font-size: 12.5px; }
+		.f-acts { display: flex; gap: 6px; }
+		.f-acts button { padding: 3px 9px; font-size: 11.5px; border-radius: 6px; border: 1px solid rgba(108,192,131,.5); background: rgba(108,192,131,.18); color: #9be8b0; cursor: pointer; }
+		.f-acts button.del { border-color: rgba(224,112,112,.45); background: rgba(224,112,112,.14); color: #f5a3a3; }
+		.f-sec { font-size: 11px; font-weight: 600; color: #8c95a3; text-transform: uppercase; letter-spacing: .04em; margin-top: 4px; }
+		#friends-badge { display: none; padding: 1px 6px; border-radius: 999px; background: #e6b104; color: #141824; font-size: 11px; font-weight: 700; }
+		#friends-badge.show { display: inline-block; }
 		.ticket-card {
 			width: 420px;
 			max-width: 100%;
@@ -527,6 +534,7 @@
 		</div>
 		<div class="drawer-actions">
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
+			<button id="open-friends" type="button"><span>Friends / Teman <span id="friends-badge"></span></span><span>&#x1F465;</span></button>
 			<button id="open-tickets" type="button"><span>Support / Tiket</span><span>&#x1F3AB;</span></button>
 			{% if is_admin %}
 			<a href="/save-editor"><span>Edit Save</span><span>&#9998;</span></a>
@@ -536,6 +544,21 @@
 			<a class="logout" href="#" onclick="logout(); return false"><span>Logout</span><span>&#x21AA;</span></a>
 		</div>
 	</aside>
+
+	<div id="friends-modal" role="dialog" aria-label="Friends">
+		<div class="ticket-card">
+			<div class="ticket-head">
+				<h3>Friends / Teman</h3>
+				<button type="button" id="friends-close" class="ticket-close">&times;</button>
+			</div>
+			<form id="friend-add-form" class="chat-input" style="padding:0;border:0">
+				<input id="friend-username" type="text" maxlength="20" placeholder="Username teman..." required />
+				<button type="submit">Add Friend</button>
+			</form>
+			<div id="friends-status" style="font-size:12px;color:#9be8b0;min-height:14px"></div>
+			<div id="friends-body" style="overflow-y:auto;max-height:290px;display:flex;flex-direction:column;gap:6px"></div>
+		</div>
+	</div>
 
 	<div id="ticket-modal" role="dialog" aria-label="Support Ticket">
 		<div class="ticket-card">
@@ -794,6 +817,86 @@
 				}
 			});
 		});
+
+		var friendsModal = document.getElementById("friends-modal");
+		function loadFriends() {
+			fetch("/friends/list.json", {cache: "no-store"})
+				.then(function (r) { return r.ok ? r.json() : null; })
+				.then(function (d) {
+					if (!d) return;
+					var badge = document.getElementById("friends-badge");
+					if (badge) {
+						badge.textContent = d.incoming.length;
+						badge.classList.toggle("show", d.incoming.length > 0);
+					}
+					var box = document.getElementById("friends-body");
+					if (!box) return;
+					box.innerHTML = "";
+					function addSec(title, rows, kind) {
+						if (!rows.length) return;
+						var h = document.createElement("div");
+						h.className = "f-sec";
+						h.textContent = title + " (" + rows.length + ")";
+						box.appendChild(h);
+						rows.forEach(function (u) {
+							var row = document.createElement("div");
+							row.className = "f-row";
+							var left = document.createElement("span");
+							left.textContent = u.username + " (" + u.island_name + ")";
+							var acts = document.createElement("div");
+							acts.className = "f-acts";
+							if (kind === "in") {
+								acts.innerHTML = '<button data-fa="accept" data-fid="' + u.id + '">Acc</button>' +
+									'<button class="del" data-fa="remove" data-fid="' + u.id + '">Tolak</button>';
+							} else if (kind === "out") {
+								acts.innerHTML = '<button class="del" data-fa="remove" data-fid="' + u.id + '">Batal</button>';
+							} else {
+								acts.innerHTML = '<button class="del" data-fa="remove" data-fid="' + u.id + '">Hapus</button>';
+							}
+							row.appendChild(left);
+							row.appendChild(acts);
+							box.appendChild(row);
+						});
+					}
+					addSec("Permintaan Masuk", d.incoming, "in");
+					addSec("Daftar Teman", d.friends, "fr");
+					addSec("Menunggu Konfirmasi", d.outgoing, "out");
+					if (!d.incoming.length && !d.friends.length && !d.outgoing.length) {
+						box.innerHTML = '<div style="color:#8c95a3;font-size:12px">Belum ada teman. Masukkan username untuk mengirim request.</div>';
+					}
+				});
+		}
+		document.getElementById("open-friends").addEventListener("click", function () {
+			toggleDrawer(false);
+			document.getElementById("friends-status").textContent = "";
+			friendsModal.classList.add("open");
+			loadFriends();
+		});
+		document.getElementById("friends-close").addEventListener("click", function () { friendsModal.classList.remove("open"); });
+		friendsModal.addEventListener("click", function (e) { if (e.target === friendsModal) friendsModal.classList.remove("open"); });
+		document.getElementById("friend-add-form").addEventListener("submit", function (e) {
+			e.preventDefault();
+			var u = document.getElementById("friend-username").value.trim();
+			if (!u) return;
+			fetch("/friends/request", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({username: u})
+			}).then(function (r) { return r.json().then(function (j) { return {ok: r.ok, j: j}; }); })
+			.then(function (res) {
+				var st = document.getElementById("friends-status");
+				st.style.color = res.ok ? "#9be8b0" : "#f5a3a3";
+				st.textContent = res.ok ? (res.j.auto_accepted ? "Otomatis berteman!" : "Friend request terkirim!") : (res.j.error || "Gagal");
+				if (res.ok) document.getElementById("friend-username").value = "";
+				loadFriends();
+			});
+		});
+		document.getElementById("friends-body").addEventListener("click", function (e) {
+			var btn = e.target.closest("button[data-fa]");
+			if (!btn) return;
+			fetch("/friends/" + btn.dataset.fid + "/" + btn.dataset.fa, {method: "POST"}).then(loadFriends);
+		});
+		loadFriends();
 
 		loadingScreenUpdate();
 	</script>
