@@ -1464,7 +1464,7 @@ def init_user():
     # resources = {"energy": 100, "coins": 100000, "oil": 7000, "wood": 5000, "aluminum": 9000,
     #                                 "copper": 4000, "gold": 3000, "iron": 2000, "uranium": 1000}
 
-    resources = {"energy": 25, "coins": 5000, "oil": 25, "wood": 150, "aluminum": 1000,
+    resources = {"energy": 100, "coins": 5000, "oil": 25, "wood": 150, "aluminum": 1000,
                  "copper": 0, "gold": 0, "iron": 0, "uranium": 0}
 
     # xp = 20000
@@ -1475,8 +1475,8 @@ def init_user():
     xp = 0
     level = 1
     zcash = 15
-    energy = 25
-    energy_max = 25
+    energy = 100
+    energy_max = 100
 
     # user_fleet = {
     #     "type": "army",
