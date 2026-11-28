@@ -531,12 +531,14 @@ def get_next_fleet_name(name):
 
 
 def get_last_fleet_name():
-    i = 0
-    fleet_name = "fleet1_" + str(get_zid())
-    while fleet_name in session["fleets"] or "fleet" + str(i+1) + "_" + str(get_zid()) in session["fleets"]:
-        i += 1
-        fleet_name = "fleet" + str(i) + "_" + str(get_zid())
-    return "fleet" + str(i-1) + "_" + str(get_zid())
+    zid = str(get_zid())
+    best_i = 0
+    for k in session.get("fleets", {}):
+        if k.startswith("fleet") and k.endswith("_" + zid):
+            num_part = k[5:-(len(zid) + 1)]
+            if num_part.isdigit():
+                best_i = max(best_i, int(num_part))
+    return f"fleet{best_i}_{zid}"
 
 
 def get_friendly_by_ally_fleet(name):
