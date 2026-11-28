@@ -56,6 +56,15 @@ def create_backup(message):
     session["backup"]['message'] = message
 
 def save_database_uri(root_path, instance_path):
+    env_url = (os.environ.get("DATABASE_URL") or "").strip()
+    if env_url:
+        if env_url.startswith("postgres://"):
+            env_url = "postgresql+psycopg://" + env_url[len("postgres://"):]
+        elif env_url.startswith("postgresql://"):
+            env_url = "postgresql+psycopg://" + env_url[len("postgresql://"):]
+        print("DATABASE", env_url.split("@")[-1])
+        return env_url
+
     save_db_path = os.path.join(my_games_path(), "save.db")
 
     if os.path.samefile(my_games_path(), root_path):
@@ -78,6 +87,19 @@ def save_database_uri(root_path, instance_path):
     print("SQLITE", f"sqlite:///{save_db_path}")
 
     return f"sqlite:///{save_db_path}"
+
+
+def configure_database_engine(engine):
+    """Enable WAL mode on SQLite so concurrent reads/writes don't block."""
+    if engine.dialect.name == "sqlite":
+        from sqlalchemy import event
+
+        @event.listens_for(engine, "connect")
+        def _set_sqlite_pragma(dbapi_conn, _conn_record):
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA synchronous=NORMAL")
+            cur.close()
 
 
 def my_games_path():
@@ -148,6 +170,16 @@ def decode_save(serialized_save):
         print("Skipping corrupt save")
         print(e)
         return None
+
+
+def has_any_saves():
+    sess_int: SqlAlchemySessionInterface = current_app.session_interface
+    return sess_int.sql_session_model.query.first() is not None
+
+
+def count_sessions():
+    sess_int: SqlAlchemySessionInterface = current_app.session_interface
+    return sess_int.sql_session_model.query.count()
 
 
 def get_saves():

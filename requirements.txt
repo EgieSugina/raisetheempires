@@ -9,6 +9,7 @@ flask_compress==1.17
 flask_socketio==5.5.0
 
 SQLAlchemy==2.0.38
+psycopg[binary]>=3.2
 
 pyinstaller==6.17.0
 setuptools>=69

@@ -25,7 +25,8 @@ if not settings.debug:
 if os.name == 'nt':
     os.system('color')
 
-from save_engine import db, save_database_uri, log_path, lookup_objects_save_by_position, get_all_sessions, \
+from save_engine import db, save_database_uri, configure_database_engine, has_any_saves, count_sessions, \
+    log_path, lookup_objects_save_by_position, get_all_sessions, \
     store_session, validate_save, InvalidSaveException, set_crash_log, my_games_path, install_path, base_path, \
     get_dict, get_saves
 from save_migration import migrate, is_0_08a_preview
@@ -127,7 +128,13 @@ app: Flask = Flask(__name__, root_path=app_base_path)
 print("Root folder", app.root_path)
 print("Instance folder", app.instance_path)
 app.config['SESSION_TYPE'] = 'sqlalchemy'
-app.config['SQLALCHEMY_DATABASE_URI'] = save_database_uri(app.root_path, app.instance_path)
+_db_uri = save_database_uri(app.root_path, app.instance_path)
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_uri
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = (
+    {"pool_pre_ping": True}
+    if _db_uri.startswith("sqlite:")
+    else {"pool_pre_ping": True, "pool_size": 10, "max_overflow": 20}
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Flask-SQLAlchemy has its own event notification system that gets layered on top of SQLAlchemy. To do this, it tracks modifications to the SQLAlchemy session. This option disables the modification tracking system.
 app.config['SESSION_SQLALCHEMY'] = db
 app.config['SESSION_COOKIE_HTTPONLY'] = False
@@ -143,7 +150,7 @@ MAX_ADMIN_ID = 123
 def index():
     # The game is the home page now. With no save loaded but saves on disk, go
     # to the picker first, otherwise opening "/" would quietly start a new one.
-    if 'user_object' not in session and 'new_world_name' not in session and get_saves():
+    if 'user_object' not in session and 'new_world_name' not in session and has_any_saves():
         return make_response(redirect('/login.html'))
     return ruffle()
 
@@ -461,7 +468,7 @@ def admin_status():
         "quests_complete": len([e for e in quests if e.get("complete")]),
         "quests_incomplete": len([e for e in quests if not e.get("complete")]),
         "save_version": session.get('save_version'),
-        "save_count": len(get_sessions_dropdown_info(get_saves())),
+        "save_count": count_sessions(),
     }
 
 
@@ -3216,6 +3223,7 @@ if __name__ == '__main__':
     db.init_app(app)
     sess.init_app(app)
     with app.app_context():
+        configure_database_engine(db.engine)
         db.create_all()  # accounts table; flask-session makes its own
         auth_engine.ensure_account_columns()
     app.session_interface = AssetSkippingSessionInterface(app.session_interface)

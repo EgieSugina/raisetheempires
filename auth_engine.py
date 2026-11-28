@@ -49,11 +49,11 @@ class Account(db.Model):
 
 
 def ensure_account_columns():
-    """Add new columns to existing SQLite accounts table if missing."""
-    from sqlalchemy import text
-    cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(accounts)"))}
+    """Add new columns to existing accounts table if missing (SQLite & PostgreSQL)."""
+    from sqlalchemy import inspect, text
+    cols = {col["name"] for col in inspect(db.engine).get_columns("accounts")}
     if "is_suspended" not in cols:
-        db.session.execute(text("ALTER TABLE accounts ADD COLUMN is_suspended BOOLEAN NOT NULL DEFAULT 0"))
+        db.session.execute(text("ALTER TABLE accounts ADD COLUMN is_suspended BOOLEAN NOT NULL DEFAULT FALSE"))
         db.session.commit()
 
 
