@@ -471,7 +471,7 @@ def do_rewards(label, raw_rewards, meta, inc_modifier=lambda a: a, item_modifier
     player['xp'] += int(inc.get('xp', 0))
 
 
-    player['cash'] += int(inc.get('cash', 0)) * 1000
+    player['cash'] += int(inc.get('cash', 0))
     player['socialXpGood'] += int(inc.get('socialXpGood', 0))
     player['socialXpBad'] += int(inc.get('socialXpBad', 0))
 
@@ -502,9 +502,8 @@ def do_rewards(label, raw_rewards, meta, inc_modifier=lambda a: a, item_modifier
         player['energyMax'] = int(energy_cap)
         levels_count += 1
         if "reward" in level and level["reward"]["-type"] == "cash":
-            reward_cash = int(level["reward"]["-count"]) * 1000
-            player['cash'] += reward_cash
-            level_cash += reward_cash
+            player['cash'] += int(level["reward"]["-count"])
+            level_cash += int(level["reward"]["-count"])
         create_backup("Level " + level["-num"])
 
     if inc:

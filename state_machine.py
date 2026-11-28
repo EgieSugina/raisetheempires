@@ -212,9 +212,8 @@ def do_state_rewards(state, reference_item, meta, playback_tend=False):
         player['energyMax'] = int(energy_cap)
         levels_count += 1
         if "reward" in level and level["reward"]["-type"] == "cash":
-            reward_cash = int(level["reward"]["-count"]) * 1000
-            player['cash'] += reward_cash
-            level_cash += reward_cash
+            player['cash'] += int(level["reward"]["-count"])
+            level_cash += int(level["reward"]["-count"])
         create_backup("Level " + level["-num"])
 
     log_rewards = ", ".join(
