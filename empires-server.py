@@ -1512,17 +1512,34 @@ def send_from_directory_mod(directory, filename, **options):
     return mod_engine.mod.get(mod_path)() if mod_path in mod_engine.mod else send_from_directory(absolute_directory, filename, **options)
 
 
+def _normalize_amf(obj):
+    """Convert Ruffle AMF0 ECMA-array dicts ({0: v0, 1: v1, ...}) into lists recursively."""
+    if isinstance(obj, dict):
+        if obj and all(isinstance(k, int) for k in obj.keys()):
+            keys = sorted(obj.keys())
+            if keys == list(range(len(keys))):
+                return [_normalize_amf(obj[k]) for k in keys]
+        for k, v in list(obj.items()):
+            obj[k] = _normalize_amf(v)
+        return obj
+    if isinstance(obj, list):
+        return [_normalize_amf(x) for x in obj]
+    return obj
+
+
 def amf_batch(batch):
     """Return the request batch as a list.
 
     Flash Player sends the AS3 Array as a strict AMF0 array, which pyamf decodes
     to a list. Ruffle serializes the same Array as an ECMA array, which decodes
     to a dict keyed by index, so iterating it yields ints instead of requests.
-    Accept both.
+    Accept both and recursively normalize nested ECMA arrays in params.
     """
-    if isinstance(batch, dict):
-        return [batch[key] for key in sorted(batch, key=lambda k: int(k))]
-    return batch
+    reqs = [batch[key] for key in sorted(batch, key=lambda k: int(k))] if isinstance(batch, dict) else list(batch or [])
+    for r in reqs:
+        if hasattr(r, "params"):
+            r.params = _normalize_amf(r.params)
+    return reqs
 
 
 @app.route('/files/empire-s.assets.zgncdn.com/assets/109338/127.0.0.1flashservices/gateway.php', methods=['POST'])
