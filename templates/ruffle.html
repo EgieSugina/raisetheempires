@@ -630,21 +630,23 @@
 			var assetCount = 0;
 			var skipRe = /\/(admin\/status\.json|chat\/|friends\/|support\/)/;
 			window.fetch = function (input) {
-				if (!window.__loadingDone) {
-					var url = typeof input === "string" ? input : (input && input.url) || "";
-					if (url && !skipRe.test(url)) {
-						var name = url.split("?")[0].split("/").pop() || url;
-						if (url.indexOf(".wasm") !== -1) {
-							setLoadingStatus("Starting Ruffle...", 14, "Memuat engine Ruffle WebAssembly (" + name + ")...");
-						} else if (url.indexOf("ZGame") !== -1) {
-							setLoadingStatus("Loading game client...", 20, "Mengunduh " + name + "...");
-						} else if (url.indexOf("gateway.php") !== -1) {
-							assetCount += 1;
-							setLoadingStatus(null, Math.min(95, 65 + assetCount), "Sinkronisasi data server (AMF)...");
-						} else {
-							assetCount += 1;
-							setLoadingStatus(null, Math.min(95, 25 + assetCount * 1.5), "Memuat aset: " + name + " (" + assetCount + ")");
-						}
+				if (window.__loadingDone) {
+					window.fetch = origFetch;
+					return origFetch.apply(this, arguments);
+				}
+				var url = typeof input === "string" ? input : (input && input.url) || "";
+				if (url && !skipRe.test(url)) {
+					var name = url.split("?")[0].split("/").pop() || url;
+					if (url.indexOf(".wasm") !== -1) {
+						setLoadingStatus("Starting Ruffle...", 14, "Memuat engine Ruffle WebAssembly (" + name + ")...");
+					} else if (url.indexOf("ZGame") !== -1) {
+						setLoadingStatus("Loading game client...", 20, "Mengunduh " + name + "...");
+					} else if (url.indexOf("gateway.php") !== -1) {
+						assetCount += 1;
+						setLoadingStatus(null, Math.min(95, 65 + assetCount), "Sinkronisasi data server (AMF)...");
+					} else {
+						assetCount += 1;
+						setLoadingStatus(null, Math.min(95, 25 + assetCount * 1.5), "Memuat aset: " + name + " (" + assetCount + ")");
 					}
 				}
 				return origFetch.apply(this, arguments);
@@ -665,6 +667,7 @@
 			allowFullscreen: true,
 			quality: savedQuality,
 			frameRate: savedFps === 30 ? null : savedFps,
+			wmode: "opaque",
 			// letterbox "on" keeps the 4:3 stage undistorted in any window shape.
 			letterbox: "on",
 			scale: "showAll",
@@ -693,7 +696,7 @@
 			drawer.classList.toggle("open", show);
 			backdrop.classList.toggle("open", show);
 		}
-		document.getElementById("menu-toggle").addEventListener("click", function () { toggleDrawer(true); });
+		document.getElementById("menu-toggle").addEventListener("click", function () { toggleDrawer(true); loadChat(); });
 		document.getElementById("drawer-close").addEventListener("click", function () { toggleDrawer(false); });
 		backdrop.addEventListener("click", function () { toggleDrawer(false); });
 		document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggleDrawer(false); });
@@ -830,7 +833,9 @@
 		}
 
 		loadChat();
-		setInterval(loadChat, 3500);
+		setInterval(function () {
+			if (drawer.classList.contains("open")) loadChat();
+		}, 3500);
 
 		var ticketModal = document.getElementById("ticket-modal");
 		function loadTickets() {
