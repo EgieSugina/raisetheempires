@@ -43,24 +43,36 @@ ZYFrameManager = {
 
 }
 
+function setLoadingStatus(msg, pct, detail) {
+	if (window.__loadingDone) return;
+	if (msg) document.getElementById("loading_message").textContent = msg;
+	if (typeof pct === "number") {
+		var bar = document.getElementById("inner_progress_bar");
+		var cur = parseFloat(bar.style.width) || 0;
+		if (pct > cur) bar.style.width = Math.min(100, pct) + "%";
+	}
+	if (detail) {
+		var el = document.getElementById("loading_detail");
+		if (el) el.textContent = detail;
+	}
+}
+
 function inner_getUserInfo() {
-	document.getElementById("loading_message").innerHTML= "Loading User info...";
-	document.getElementById("inner_progress_bar").style.width = "30%";
+	setLoadingStatus("Loading User info...", 35, "Memuat profil & data pemain...");
 	document.getElementById("flash_enabler").style.display = "none";
 }
 
 function inner_getFriendData() {
-	document.getElementById("inner_progress_bar").style.width = "50%";
-	document.getElementById("loading_message").innerHTML= "Loading Friends data...";
+	setLoadingStatus("Loading Friends data...", 50, "Memuat daftar teman & tetangga...");
 }
 
 function inner_getAppFriendIds() {
-	document.getElementById("inner_progress_bar").style.width = "70%";
+	setLoadingStatus("Loading Game World...", 65, "Memuat pulau, bangunan & unit...");
 }
 
 function inner_onGameLoaded(seen, popp, canvas) {
+	window.__loadingDone = true;
 	document.getElementById("inner_progress_bar").style.width = "100%";
-	// Hide Loading div
 	document.getElementById("loading_game").style.display = "none";
 }
 

@@ -465,6 +465,15 @@
 		}
 		#loading_card img.logo { width: min(320px, 70vw); height: auto; margin-bottom: 18px; }
 		#loading_message { font-size: 17px; margin: 0 0 14px; text-shadow: 0 1px 3px #000; }
+		#loading_detail {
+			font-size: 12px;
+			color: #9aa5b5;
+			margin: 10px 0 0;
+			min-height: 16px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
 		#progress_bar {
 			display: flex;
 			height: 10px;
@@ -477,7 +486,7 @@
 		#inner_progress_bar {
 			width: 0%;
 			background: #e6b104;
-			transition: width 1s linear;
+			transition: width .35s ease;
 		}
 		#flash_enabler, #loading_gif { display: none; }
 	</style>
@@ -580,6 +589,7 @@
 			<img class="logo" src="img/logo.png" alt="Empires &amp; Allies"/>
 			<p id="loading_message">Starting Ruffle&hellip;</p>
 			<div id="progress_bar"><div id="inner_progress_bar"></div></div>
+			<p id="loading_detail">Menyiapkan Ruffle WebAssembly&hellip;</p>
 			<img id="loading_gif" src="img/loading.gif" alt=""/>
 			<div id="flash_enabler">
 				<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width="300">
@@ -600,6 +610,32 @@
 			location.reload();
 		});
 
+		(function () {
+			var origFetch = window.fetch;
+			var assetCount = 0;
+			var skipRe = /\/(admin\/status\.json|chat\/|friends\/|support\/)/;
+			window.fetch = function (input) {
+				if (!window.__loadingDone) {
+					var url = typeof input === "string" ? input : (input && input.url) || "";
+					if (url && !skipRe.test(url)) {
+						var name = url.split("?")[0].split("/").pop() || url;
+						if (url.indexOf(".wasm") !== -1) {
+							setLoadingStatus("Starting Ruffle...", 14, "Memuat engine Ruffle WebAssembly (" + name + ")...");
+						} else if (url.indexOf("ZGame") !== -1) {
+							setLoadingStatus("Loading game client...", 20, "Mengunduh " + name + "...");
+						} else if (url.indexOf("gateway.php") !== -1) {
+							assetCount += 1;
+							setLoadingStatus(null, Math.min(95, 65 + assetCount), "Sinkronisasi data server (AMF)...");
+						} else {
+							assetCount += 1;
+							setLoadingStatus(null, Math.min(95, 25 + assetCount * 1.5), "Memuat aset: " + name + " (" + assetCount + ")");
+						}
+					}
+				}
+				return origFetch.apply(this, arguments);
+			};
+		})();
+
 		window.RufflePlayer = window.RufflePlayer || {};
 		window.RufflePlayer.config = {autoplay: "on", logLevel: "error"};
 		const ruffle = window.RufflePlayer.newest();
@@ -619,8 +655,10 @@
 			parameters: 'serverTime={{time}}&is_staging=false&debugMode=false&generateSchema=0&sn_app_url=&stats=0'
 		}).then(function () {
 			console.info("Ruffle successfully loaded the file");
+			setLoadingStatus("Initializing game...", 30, "Menjalankan SWF client...");
 		}).catch(function (e) {
 			console.error("Ruffle failed to load the file: " + e);
+			setLoadingStatus("Gagal memuat game", null, String(e));
 		});
 
 		document.getElementById("fullscreen").addEventListener("click", function () {

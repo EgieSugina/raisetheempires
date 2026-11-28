@@ -19,7 +19,6 @@ function loadingScreenUpdate() {
         //document.getElementById("flash_enabler").style.display = "block";
     }
     else {
-        document.getElementById("loading_message").innerHTML = 'Loading game...';
-        document.getElementById("inner_progress_bar").style.width = "10%";
+        setLoadingStatus('Loading game...', 10, 'Menyiapkan Ruffle & mengunduh client...');
     }
 }
