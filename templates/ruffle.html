@@ -83,9 +83,7 @@
 			border-radius: 999px 0 0 999px;
 			border: 1px solid rgba(255, 255, 255, .16);
 			border-right: 0;
-			background: rgba(18, 22, 32, .84);
-			backdrop-filter: blur(10px);
-			-webkit-backdrop-filter: blur(10px);
+			background: rgba(18, 22, 32, .9);
 			color: #f0f3f8;
 			font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 			cursor: pointer;
@@ -533,6 +531,7 @@
 			</form>
 		</div>
 		<div class="drawer-actions">
+			<button id="quality-toggle" type="button"><span>Graphics Quality</span><span id="quality-lbl">Low</span></button>
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
 			<button id="open-friends" type="button"><span>Friends / Teman <span id="friends-badge"></span></span><span>&#x1F465;</span></button>
 			<button id="open-tickets" type="button"><span>Support / Tiket</span><span>&#x1F3AB;</span></button>
@@ -591,8 +590,18 @@
 	</div>
 
 	<script>
+		var savedQuality = localStorage.getItem("rte_quality") || "low";
+		var qLbl = document.getElementById("quality-lbl");
+		if (qLbl) qLbl.textContent = savedQuality.charAt(0).toUpperCase() + savedQuality.slice(1);
+		document.getElementById("quality-toggle").addEventListener("click", function () {
+			var order = ["low", "medium", "high"];
+			var next = order[(order.indexOf(savedQuality) + 1) % order.length];
+			localStorage.setItem("rte_quality", next);
+			location.reload();
+		});
+
 		window.RufflePlayer = window.RufflePlayer || {};
-		window.RufflePlayer.config = {autoplay: "on", logLevel: "info"};
+		window.RufflePlayer.config = {autoplay: "on", logLevel: "error"};
 		const ruffle = window.RufflePlayer.newest();
 		var player = document.getElementById("ruffle").appendChild(ruffle.createPlayer());
 		player.load({ // https://ruffle.rs/js-docs/master/interfaces/Config.URLLoadOptions.html
@@ -603,11 +612,11 @@
 			// Error #2067 and startup stops at a blank screen.
 			allowScriptAccess: true,
 			allowFullscreen: true,
-			quality: "high",
+			quality: savedQuality,
 			// letterbox "on" keeps the 4:3 stage undistorted in any window shape.
 			letterbox: "on",
 			scale: "showAll",
-			parameters: 'serverTime={{time}}&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1'
+			parameters: 'serverTime={{time}}&is_staging=false&debugMode=false&generateSchema=0&sn_app_url=&stats=0'
 		}).then(function () {
 			console.info("Ruffle successfully loaded the file");
 		}).catch(function (e) {
