@@ -36,9 +36,6 @@ fi
 # with "sqlite3.OperationalError: unable to open database file".
 mkdir -p instance
 
-# empires-server.py defaults EDITOR to 'notepad' (a Windows leftover).
-export EDITOR="${EDITOR:-${VISUAL:-nano}}"
-
 # Report the right URL even when the caller overrides the port.
 PORT=5005
 prev=""

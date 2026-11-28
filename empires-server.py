@@ -3074,8 +3074,6 @@ def delete_save(message):
 
 @app.errorhandler(500)
 def server_error_page(error):
-    if settings.crash_log:
-        text = editor.edit(filename=os.path.join(log_path(), "log.txt"))
     # Without the explicit code Flask answers 500s with "200 OK", which hides
     # server errors from anything checking the status (the admin page did).
     return 'It went wrong', 500
