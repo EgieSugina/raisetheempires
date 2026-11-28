@@ -72,49 +72,53 @@
 			background: #10121a;
 		}
 
-		/* Side-docked profile/menu tab (flush on right edge, clear of top HUD). */
+		/* Side-docked glassmorphic profile/menu handle (right edge, clear of top HUD). */
 		#menu-toggle {
 			position: fixed;
 			top: 50%;
 			right: 0;
-			transform: translateY(-50%);
+			transform: translate(4px, -50%);
 			z-index: 25;
-			padding: 10px 10px 10px 12px;
-			border-radius: 12px 0 0 12px;
+			padding: 8px 12px 8px 10px;
+			border-radius: 999px 0 0 999px;
 			border: 1px solid rgba(255, 255, 255, .16);
 			border-right: 0;
-			background: rgba(22, 25, 34, .92);
-			color: #e6e8eb;
-			font: 600 12.5px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			background: rgba(18, 22, 32, .84);
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+			color: #f0f3f8;
+			font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 			cursor: pointer;
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			box-shadow: -4px 4px 16px rgba(0, 0, 0, .45);
-			transition: background .15s ease, border-color .15s ease, padding-right .15s ease;
+			box-shadow: -6px 6px 20px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08);
+			transition: transform .18s ease, background .18s ease, border-color .18s ease;
 		}
 		#menu-toggle:hover {
-			background: rgba(30, 34, 46, .98);
-			border-color: #7a9ad6;
-			padding-right: 14px;
+			transform: translate(0, -50%);
+			background: rgba(26, 31, 45, .96);
+			border-color: rgba(122, 154, 214, .75);
 		}
-		#menu-toggle .dot {
-			width: 8px;
-			height: 8px;
+		#menu-toggle .chev { color: #9aa5b5; font-size: 14px; line-height: 1; }
+		#menu-toggle .ava {
+			width: 24px;
+			height: 24px;
 			border-radius: 50%;
-			background: #6cc083;
-			flex: 0 0 auto;
+			object-fit: cover;
+			border: 1.5px solid rgba(230, 177, 4, .75);
+			background: #232838;
 		}
-		#menu-toggle .chev { color: #aab1ba; font-size: 13px; }
 
 		#drawer-backdrop {
 			position: fixed;
 			inset: 0;
 			z-index: 29;
-			background: rgba(0, 0, 0, .45);
+			background: rgba(8, 10, 16, .55);
+			backdrop-filter: blur(3px);
 			opacity: 0;
 			pointer-events: none;
-			transition: opacity .2s ease;
+			transition: opacity .22s ease;
 		}
 		#drawer-backdrop.open { opacity: 1; pointer-events: auto; }
 
@@ -123,17 +127,20 @@
 			top: 0;
 			right: 0;
 			bottom: 0;
-			width: 280px;
-			max-width: 88vw;
+			width: 300px;
+			max-width: 90vw;
 			z-index: 30;
-			background: rgba(18, 20, 28, .96);
-			border-left: 1px solid rgba(255, 255, 255, .14);
-			padding: 18px 16px;
+			background: rgba(16, 19, 28, .95);
+			backdrop-filter: blur(14px);
+			-webkit-backdrop-filter: blur(14px);
+			border-left: 1px solid rgba(255, 255, 255, .12);
+			box-shadow: -12px 0 36px rgba(0, 0, 0, .55);
+			padding: 20px 18px;
 			display: flex;
 			flex-direction: column;
-			gap: 14px;
+			gap: 16px;
 			transform: translateX(100%);
-			transition: transform .22s ease;
+			transition: transform .24s cubic-bezier(.22, 1, .36, 1);
 			color: #e6e8eb;
 			font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 		}
@@ -143,54 +150,76 @@
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			gap: 8px;
-			padding-bottom: 10px;
-			border-bottom: 1px solid rgba(255, 255, 255, .12);
+			gap: 10px;
+			padding-bottom: 14px;
+			border-bottom: 1px solid rgba(255, 255, 255, .1);
 		}
-		.drawer-head .who { color: #aab1ba; font-size: 14px; }
-		.drawer-head .who b { color: #fff; font-weight: 600; }
+		.drawer-profile { display: flex; align-items: center; gap: 11px; min-width: 0; }
+		.drawer-profile img {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			object-fit: cover;
+			border: 2px solid rgba(230, 177, 4, .8);
+			background: #232838;
+			flex: 0 0 auto;
+		}
+		.drawer-profile .who { display: flex; flex-direction: column; min-width: 0; }
+		.drawer-profile .who b { color: #fff; font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.drawer-profile .who span { color: #e6b104; font-size: 12px; font-weight: 600; }
 		#drawer-close {
-			background: none;
-			border: 1px solid rgba(255, 255, 255, .16);
+			background: rgba(255, 255, 255, .05);
+			border: 1px solid rgba(255, 255, 255, .12);
 			color: #aab1ba;
-			border-radius: 6px;
-			width: 28px;
-			height: 28px;
+			border-radius: 8px;
+			width: 30px;
+			height: 30px;
 			cursor: pointer;
-			font-size: 15px;
+			font-size: 16px;
+			flex: 0 0 auto;
 		}
-		#drawer-close:hover { color: #fff; border-color: #7a9ad6; }
+		#drawer-close:hover { color: #fff; border-color: #7a9ad6; background: rgba(255, 255, 255, .1); }
 
 		.drawer-stats {
-			background: rgba(255, 255, 255, .04);
-			border: 1px solid rgba(255, 255, 255, .08);
-			border-radius: 8px;
-			padding: 10px 12px;
-			font-size: 12.5px;
-			color: #cfd5de;
-			line-height: 1.65;
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 8px;
 		}
+		.stat-box {
+			background: rgba(255, 255, 255, .04);
+			border: 1px solid rgba(255, 255, 255, .07);
+			border-radius: 8px;
+			padding: 8px 10px;
+		}
+		.stat-box .k { display: block; font-size: 11px; color: #8c95a3; text-transform: uppercase; letter-spacing: .04em; }
+		.stat-box .v { display: block; font-size: 14px; font-weight: 600; color: #f0f3f8; font-variant-numeric: tabular-nums; margin-top: 2px; }
 
 		.drawer-actions {
 			display: flex;
 			flex-direction: column;
 			gap: 8px;
+			margin-top: auto;
 		}
 		.drawer-actions a, .drawer-actions button {
 			font: inherit;
-			font-size: 13px;
+			font-size: 13.5px;
+			font-weight: 500;
 			text-align: left;
 			color: #e6e8eb;
-			background: rgba(255, 255, 255, .06);
-			border: 1px solid rgba(255, 255, 255, .14);
-			border-radius: 8px;
-			padding: 9px 12px;
+			background: rgba(255, 255, 255, .05);
+			border: 1px solid rgba(255, 255, 255, .1);
+			border-radius: 9px;
+			padding: 10px 13px;
 			text-decoration: none;
 			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			transition: background .15s ease, border-color .15s ease;
 		}
-		.drawer-actions a:hover, .drawer-actions button:hover { border-color: #7a9ad6; color: #cfdcf5; }
-		.drawer-actions a.logout { border-color: rgba(224, 112, 112, .35); color: #f29b9b; }
-		.drawer-actions a.logout:hover { border-color: #e07070; color: #ffd0d0; }
+		.drawer-actions a:hover, .drawer-actions button:hover { background: rgba(122, 154, 214, .14); border-color: rgba(122, 154, 214, .55); color: #fff; }
+		.drawer-actions a.logout { margin-top: 6px; background: rgba(224, 112, 112, .08); border-color: rgba(224, 112, 112, .3); color: #f5a3a3; }
+		.drawer-actions a.logout:hover { background: rgba(224, 112, 112, .18); border-color: #e07070; color: #ffd6d6; }
 
 		#shutdown-banner {
 			position: fixed;
@@ -259,30 +288,38 @@
 	</div>
 
 	<div id="shutdown-banner" role="alert"></div>
-	<button id="menu-toggle" title="Profile &amp; Menu" aria-label="Profile &amp; Menu"><span class="chev">&lsaquo;</span><span class="dot"></span><span>Menu</span></button>
+	<button id="menu-toggle" title="Profile &amp; Menu" aria-label="Profile &amp; Menu">
+		<span class="chev">&lsaquo;</span>
+		<img class="ava" src="{{ picture }}" alt=""/>
+	</button>
 	<div id="drawer-backdrop"></div>
 	<aside id="drawer" aria-label="Profile &amp; Menu">
 		<div class="drawer-head">
-			<span id="who-header" class="who">
-			{% for dropdown_item in dropdown_items %}{% if dropdown_item["uid"] == zid | int %}
-			<b>{{ dropdown_item["world_name"] }}</b> &middot; lvl {{ dropdown_item["level"] }}
-			{% endif %}{% endfor %}
-			</span>
+			<div class="drawer-profile">
+				<img src="{{ picture }}" alt=""/>
+				<div id="who-header" class="who">
+					<b>{{ worldname }}</b>
+					<span>Level 1</span>
+				</div>
+			</div>
 			<button id="drawer-close" title="Close">&times;</button>
 		</div>
 		<div id="res-header" class="drawer-stats">
-		{% if resources %}
-		Coins {{ resources.get("coins", 0) }} &middot; Cash {{ cash | default(0) }} &middot; Energy {{ energy | default(0) }} &middot; Wood {{ resources.get("wood", 0) }} &middot; Iron {{ resources.get("iron", 0) }} &middot; Oil {{ resources.get("oil", 0) }}
-		{% endif %}
+			<div class="stat-box"><span class="k">Coins</span><span class="v" id="st-coins">{{ resources.get("coins", 0) if resources else 0 }}</span></div>
+			<div class="stat-box"><span class="k">Cash</span><span class="v" id="st-cash">{{ cash | default(0) }}</span></div>
+			<div class="stat-box"><span class="k">Energy</span><span class="v" id="st-energy">{{ energy | default(0) }}</span></div>
+			<div class="stat-box"><span class="k">Wood</span><span class="v" id="st-wood">{{ resources.get("wood", 0) if resources else 0 }}</span></div>
+			<div class="stat-box"><span class="k">Iron</span><span class="v" id="st-iron">{{ resources.get("iron", 0) if resources else 0 }}</span></div>
+			<div class="stat-box"><span class="k">Oil</span><span class="v" id="st-oil">{{ resources.get("oil", 0) if resources else 0 }}</span></div>
 		</div>
 		<div class="drawer-actions">
-			<button id="fullscreen" title="Fullscreen">Fullscreen</button>
+			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
 			{% if is_admin %}
-			<a href="/save-editor">Edit save</a>
-			<a href="/admin">Admin</a>
+			<a href="/save-editor"><span>Edit Save</span><span>&#9998;</span></a>
+			<a href="/admin"><span>Admin Console</span><span>&#9881;</span></a>
 			{% endif %}
-			<a href="/login.html">Switch save</a>
-			<a class="logout" href="#" onclick="logout(); return false">Logout</a>
+			<a href="/login.html"><span>Switch Account</span><span>&#8644;</span></a>
+			<a class="logout" href="#" onclick="logout(); return false"><span>Logout</span><span>&#x21AA;</span></a>
 		</div>
 	</aside>
 
@@ -375,18 +412,13 @@
 					if (!s.has_session) return;
 					var whoEl = document.getElementById("who-header");
 					if (whoEl && s.world_name !== null) {
-						whoEl.innerHTML = "<b>" + String(s.world_name).replace(/[<>&]/g, "") + "</b> &middot; lvl " + (s.level ?? 1);
+						whoEl.innerHTML = "<b>" + String(s.world_name).replace(/[<>&]/g, "") + "</b><span>Level " + (s.level ?? 1) + "</span>";
 					}
-					var resEl = document.getElementById("res-header");
-					if (resEl && s.coins !== null) {
-						resEl.textContent = "Coins " + (s.coins ?? 0) +
-							" · Cash " + (s.cash ?? 0) +
-							" · Energy " + (s.energy ?? 0) +
-							" · Wood " + (s.wood ?? 0) +
-							" · Iron " + (s.iron ?? 0) +
-							" · Oil " + (s.oil ?? 0) +
-							" · Alum " + (s.aluminum ?? 0);
-					}
+					var map = {"st-coins": s.coins, "st-cash": s.cash, "st-energy": s.energy, "st-wood": s.wood, "st-iron": s.iron, "st-oil": s.oil};
+					Object.keys(map).forEach(function (id) {
+						var el = document.getElementById(id);
+						if (el && map[id] !== null && map[id] !== undefined) el.textContent = map[id];
+					});
 				})
 				.catch(function () {});
 		}
