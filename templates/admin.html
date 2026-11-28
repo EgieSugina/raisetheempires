@@ -213,6 +213,11 @@
 				<a class="btn" href="/list_session" target="_blank">list_session</a>
 				<a class="btn" href="/language_editor" target="_blank">Language editor</a>
 			</div>
+			<div class="row" style="margin-top:12px">
+				<button class="danger" data-post="/admin/shutdown">Shutdown (30s notice)</button>
+				<button data-post="/admin/shutdown/cancel">Cancel shutdown</button>
+				<span id="st-shutdown" class="hint" style="margin:0"></span>
+			</div>
 		</section>
 
 		<section class="card">
@@ -482,6 +487,7 @@
 				set('st-quests', s.quests_complete + ' / ' + s.quests_incomplete);
 				set('st-saveversion', s.save_version === null ? '-' : s.save_version);
 				set('st-saves', s.save_count);
+				set('st-shutdown', s.shutdown_in !== null && s.shutdown_in !== undefined ? ('Shutting down in ' + s.shutdown_in + 's') : '');
 			})
 			.catch(function (err) { log('status failed: ' + err, 'err'); });
 	}

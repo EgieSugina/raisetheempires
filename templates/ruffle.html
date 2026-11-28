@@ -112,6 +112,25 @@
 		/* Hover target so the bar can be summoned without it being visible. */
 		#bar-zone { position: fixed; top: 0; right: 0; width: 260px; height: 14px; z-index: 19; }
 
+		#shutdown-banner {
+			position: fixed;
+			top: 12px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 40;
+			display: none;
+			padding: 9px 16px;
+			border-radius: 8px;
+			background: rgba(160, 40, 20, .94);
+			border: 1px solid rgba(255, 190, 120, .55);
+			color: #fff;
+			font-weight: 600;
+			font-size: 13px;
+			box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
+			pointer-events: none;
+		}
+		#shutdown-banner.show { display: block; }
+
 		/* Loading screen. The ids below are driven by js/flash.js and js/empires.js. */
 		#loading_game {
 			position: fixed;
@@ -160,6 +179,7 @@
 	</div>
 
 	<div id="bar-zone" aria-hidden="true"></div>
+	<div id="shutdown-banner" role="alert"></div>
 	<div id="bar">
 		<span id="who-header" class="who">
 		{% for dropdown_item in dropdown_items %}{% if dropdown_item["uid"] == zid | int %}
@@ -232,12 +252,33 @@
 		document.body.classList.add("bar-peek");
 		setTimeout(function () { document.body.classList.remove("bar-peek"); }, 2600);
 
+		var shutdownRemaining = null;
+		function renderShutdownBanner() {
+			var el = document.getElementById("shutdown-banner");
+			if (!el) return;
+			if (shutdownRemaining === null) {
+				el.classList.remove("show");
+				return;
+			}
+			el.textContent = "Server akan shutdown dalam " + shutdownRemaining + " detik. Harap selesaikan aksi (progress tersimpan otomatis).";
+			el.classList.add("show");
+		}
+		setInterval(function () {
+			if (shutdownRemaining !== null && shutdownRemaining > 0) {
+				shutdownRemaining -= 1;
+				renderShutdownBanner();
+			}
+		}, 1000);
+
 		// Keep header world/level and resources (wood, iron, oil, etc.) up to date.
 		function refreshHeaderResources() {
 			fetch("/admin/status.json", {cache: "no-store"})
 				.then(function (res) { return res.ok ? res.json() : null; })
 				.then(function (s) {
-					if (!s || !s.has_session) return;
+					if (!s) return;
+					shutdownRemaining = (s.shutdown_in !== null && s.shutdown_in !== undefined) ? s.shutdown_in : null;
+					renderShutdownBanner();
+					if (!s.has_session) return;
 					var whoEl = document.getElementById("who-header");
 					if (whoEl && s.world_name !== null) {
 						whoEl.innerHTML = "<b>" + String(s.world_name).replace(/[<>&]/g, "") + "</b> &middot; lvl " + (s.level ?? 1);

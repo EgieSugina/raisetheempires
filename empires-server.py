@@ -171,6 +171,8 @@ def _current_account():
 
 ADMIN_EXACT_PATHS = {
     "/admin",
+    "/admin/shutdown",
+    "/admin/shutdown/cancel",
     "/save-editor",
     "/list_session",
     "/wipe_session",
@@ -490,6 +492,42 @@ def admin_quest_buckets():
     )
 
 
+_shutdown_at = None
+_shutdown_timer = None
+
+
+def _finish_shutdown():
+    print("Shutdown countdown finished. Stopping server...")
+    os._exit(0)
+
+
+def schedule_shutdown(seconds=30):
+    global _shutdown_at, _shutdown_timer
+    if _shutdown_timer is not None:
+        _shutdown_timer.cancel()
+    _shutdown_at = datetime.now().timestamp() + seconds
+    _shutdown_timer = threading.Timer(seconds, _finish_shutdown)
+    _shutdown_timer.daemon = True
+    _shutdown_timer.start()
+    print(f"WARNING: Server shutting down in {seconds}s (press Ctrl+C again to force quit).")
+
+
+def cancel_shutdown():
+    global _shutdown_at, _shutdown_timer
+    if _shutdown_timer is not None:
+        _shutdown_timer.cancel()
+        _shutdown_timer = None
+    _shutdown_at = None
+    print("Shutdown cancelled.")
+
+
+def _handle_shutdown_signal(signum, _frame):
+    if _shutdown_at is not None:
+        print("Force shutdown requested.")
+        os._exit(0)
+    schedule_shutdown(30)
+
+
 def admin_status():
     """A small snapshot of the current session, for the admin page to poll."""
     user_object = session.get('user_object')
@@ -519,6 +557,7 @@ def admin_status():
         "quests_incomplete": len([e for e in quests if not e.get("complete")]),
         "save_version": session.get('save_version'),
         "save_count": count_sessions(),
+        "shutdown_in": max(0, int(round(_shutdown_at - datetime.now().timestamp()))) if _shutdown_at else None,
     }
 
 
@@ -548,6 +587,20 @@ def admin_page():
 def admin_status_json():
     return Response(json.dumps(admin_status(), default=lambda o: '<not serializable>'),
                     mimetype="application/json")
+
+
+@app.route("/admin/shutdown", methods=['POST'])
+def admin_shutdown():
+    data = request.get_json(silent=True) or {}
+    secs = max(5, min(300, int(data.get("seconds") or 30)))
+    schedule_shutdown(secs)
+    return Response(json.dumps({"ok": True, "shutdown_in": secs}), mimetype="application/json")
+
+
+@app.route("/admin/shutdown/cancel", methods=['POST'])
+def admin_shutdown_cancel():
+    cancel_shutdown()
+    return Response(json.dumps({"ok": True}), mimetype="application/json")
 
 
 def _find_save_for_account(account):
@@ -3298,6 +3351,10 @@ if __name__ == '__main__':
     # session.app.session_interface.db.create_all()
     # app.session_interface.db.create_all()
     # db.create_all()
+
+    import signal
+    signal.signal(signal.SIGINT, _handle_shutdown_signal)
+    signal.signal(signal.SIGTERM, _handle_shutdown_signal)
 
     socketio.run(app, host=settings.host, port=settings.port, debug=settings.debug, allow_unsafe_werkzeug=True)
     # app.run(host='127.0.0.1', port=5005, debug=True)
