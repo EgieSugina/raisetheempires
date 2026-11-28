@@ -103,6 +103,14 @@ def patch_base_path(swf_bytes, base_url):
     patched[found:found + len(BASE_PATH_ENTRY)] = new_entry
     struct.pack_into("<I", patched, header_start + 2, data_len + delta)
 
+    # Show in-game Wood, Oil, Ore/Iron, and Immunity HUD bars immediately instead
+    # of hiding them behind early quests / level > 7 (PlayerStatsQuestGatedUIItem.isHidden).
+    hud_gate_old = bytes.fromhex("d03060b70f669a5666b516762a111000002960b70f669a56d0669d534686180176822a110e00002960b70f669a5666d7162407af829648")
+    pos_hud = patched.find(hud_gate_old)
+    if pos_hud != -1:
+        # Replace body after getlocal_0; pushscope (d0 30) with pushfalse; returnvalue (27 48).
+        patched[pos_hud + 2:pos_hud + 4] = b"\x27\x48"
+
     (file_length,) = struct.unpack_from("<I", swf_bytes, 4)
     header = bytearray(swf_bytes[:8])
     struct.pack_into("<I", header, 4, file_length + delta)

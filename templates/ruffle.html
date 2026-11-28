@@ -72,7 +72,7 @@
 			background: #10121a;
 		}
 
-		/* Top overlay header: always visible and compact. */
+		/* Overlay bar: out of the way until the pointer goes near it. */
 		#bar {
 			position: fixed;
 			top: 0;
@@ -80,14 +80,17 @@
 			z-index: 20;
 			display: flex;
 			align-items: center;
-			flex-wrap: wrap;
 			gap: 8px;
-			padding: 6px 12px;
+			padding: 8px 12px;
 			border-bottom-left-radius: 10px;
-			background: rgba(16, 18, 26, .86);
+			background: rgba(16, 18, 26, .82);
 			border-left: 1px solid rgba(255, 255, 255, .12);
 			border-bottom: 1px solid rgba(255, 255, 255, .12);
+			opacity: 0;
+			transform: translateY(-100%);
+			transition: opacity .18s ease, transform .18s ease;
 		}
+		#bar:hover, #bar:focus-within, #bar-zone:hover + #bar, body.bar-peek #bar { opacity: 1; transform: none; }
 
 		#bar .who { color: #aab1ba; font-size: 13px; margin-right: 4px; white-space: nowrap; }
 		#bar .who b { color: #e6e8eb; font-weight: 600; }
