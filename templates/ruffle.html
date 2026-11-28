@@ -219,7 +219,7 @@
 			transition: background .15s ease, border-color .15s ease;
 		}
 		.drawer-actions a:hover, .drawer-actions button:hover { background: rgba(122, 154, 214, .14); border-color: rgba(122, 154, 214, .55); color: #fff; }
-		.drawer-actions a.logout { background: rgba(224, 112, 112, .08); border-color: rgba(224, 112, 112, .3); color: #f5a3a3; }
+		.drawer-actions a.logout { grid-column: 1 / -1; background: rgba(224, 112, 112, .08); border-color: rgba(224, 112, 112, .3); color: #f5a3a3; }
 		.drawer-actions a.logout:hover { background: rgba(224, 112, 112, .18); border-color: #e07070; color: #ffd6d6; }
 
 		.chat-box {
@@ -544,6 +544,7 @@
 		</div>
 		<div class="drawer-actions">
 			<button id="quality-toggle" type="button" title="Graphics Quality"><span>Quality</span><span id="quality-lbl">Low</span></button>
+			<button id="fps-toggle" type="button" title="FPS Cap (30 / 60 / 120)"><span>FPS Cap</span><span id="fps-lbl">30</span></button>
 			<button id="fullscreen" title="Fullscreen"><span>Fullscreen</span><span>&#x26F6;</span></button>
 			<button id="open-friends" type="button" title="Friends / Teman"><span>Friends <span id="friends-badge"></span></span><span>&#x1F465;</span></button>
 			<button id="open-tickets" type="button" title="Support / Tiket"><span>Support</span><span>&#x1F3AB;</span></button>
@@ -613,6 +614,17 @@
 			location.reload();
 		});
 
+		var savedFps = parseInt(localStorage.getItem("rte_fps") || "30", 10);
+		if ([30, 60, 120].indexOf(savedFps) === -1) savedFps = 30;
+		var fpsLbl = document.getElementById("fps-lbl");
+		if (fpsLbl) fpsLbl.textContent = savedFps;
+		document.getElementById("fps-toggle").addEventListener("click", function () {
+			var order = [30, 60, 120];
+			var next = order[(order.indexOf(savedFps) + 1) % order.length];
+			localStorage.setItem("rte_fps", String(next));
+			location.reload();
+		});
+
 		(function () {
 			var origFetch = window.fetch;
 			var assetCount = 0;
@@ -652,6 +664,7 @@
 			allowScriptAccess: true,
 			allowFullscreen: true,
 			quality: savedQuality,
+			frameRate: savedFps === 30 ? null : savedFps,
 			// letterbox "on" keeps the 4:3 stage undistorted in any window shape.
 			letterbox: "on",
 			scale: "showAll",
