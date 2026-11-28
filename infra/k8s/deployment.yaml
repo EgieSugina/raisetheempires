@@ -179,3 +179,52 @@ spec:
       backendRefs:
         - name: empires-app
           port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: raisetheempires
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: transcode-1
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: media
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.10.0
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --metrics
+            - 0.0.0.0:2000
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-token
+                  key: TUNNEL_TOKEN
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
