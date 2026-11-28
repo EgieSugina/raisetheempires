@@ -50,10 +50,24 @@ def click_next_state(do_click, id, meta, step, reference_item, speed_up=False, t
                 break
 
         if (do_click or tend):
-            try:
-               next_state_id = state['-clickNext'] if not cancel else state['-cancelNext']
-            except:
+            if cancel and '-cancelNext' in state:
+                next_state_id = state['-cancelNext']
+            elif '-clickNext' in state:
                 next_state_id = state['-clickNext']
+            elif '-autoNext' in state:
+                while '-autoNext' in state and '-clickNext' not in state and state['-stateName'] != state['-autoNext']:
+                    next_auto_id = state['-autoNext']
+                    state = lookup_state(state_machine, next_auto_id, cur_object, True)
+                    check_state(state_machine, state, cur_object, tending)
+                    if not tending:
+                        do_state_rewards(state, cur_object.get('referenceItem'), meta, playback_tend=playback_tend)
+                    cur_object['lastUpdated'] = int(timestamp * 1000)
+                    cur_object['state'] = next_auto_id
+                if '-clickNext' not in state:
+                    return cur_object
+                next_state_id = state['-clickNext']
+            else:
+                return cur_object
             if reference_item != cur_object.get('referenceItem'):
                 state_machine = lookup_state_machine(game_item['stateMachineValues']['-stateMachineName'],
                                                      game_item['stateMachineValues'].get('define', []),
