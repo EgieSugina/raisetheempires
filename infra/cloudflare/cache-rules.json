@@ -1,0 +1,33 @@
+{
+  "rules": [
+    {
+      "description": "empireandallies: bypass cache for session and dynamic routes",
+      "expression": "(http.host eq \"empireandallies.tsukimi.my\") and (http.request.uri.path in {\"/\" \"/ruffle.html\" \"/login.html\" \"/register.html\" \"/logout\" \"/save-editor\" \"/language_editor\" \"/list_session\" \"/wipe_session\" \"/gazillionaire\" \"/deprogress\"} or starts_with(http.request.uri.path, \"/admin\") or starts_with(http.request.uri.path, \"/chat/\") or starts_with(http.request.uri.path, \"/friends/\") or starts_with(http.request.uri.path, \"/support/\") or starts_with(http.request.uri.path, \"/socket.io\") or starts_with(http.request.uri.path, \"/seed/\") or starts_with(http.request.uri.path, \"/patch/\") or starts_with(http.request.uri.path, \"/unlock_quest/\") or starts_with(http.request.uri.path, \"/complete_quest/\") or starts_with(http.request.uri.path, \"/remove_quest/\") or starts_with(http.request.uri.path, \"/chooseavatar/\") or http.request.uri.path contains \"flashservices/gateway.php\" or http.request.uri.path contains \"record_stats.php\")",
+      "action": "set_cache_settings",
+      "action_parameters": {
+        "cache": false
+      },
+      "enabled": true
+    },
+    {
+      "description": "empireandallies: cache game assets, honour origin Cache-Control",
+      "expression": "(http.host eq \"empireandallies.tsukimi.my\") and (starts_with(http.request.uri.path, \"/assets/\") or starts_with(http.request.uri.path, \"/nullassets/\") or starts_with(http.request.uri.path, \"/img/\") or starts_with(http.request.uri.path, \"/js/\") or starts_with(http.request.uri.path, \"/css/\") or starts_with(http.request.uri.path, \"/files/empire-s.assets.zgncdn.com/\") or http.request.uri.path in {\"/gameSettings.xml\" \"/en_US.xml\" \"/questSettings.xml\" \"/changelog.txt\" \"/favicon.ico\"})",
+      "action": "set_cache_settings",
+      "action_parameters": {
+        "cache": true,
+        "edge_ttl": {
+          "mode": "respect_origin"
+        },
+        "browser_ttl": {
+          "mode": "respect_origin"
+        },
+        "origin_error_page_passthru": false,
+        "respect_strong_etags": true,
+        "serve_stale": {
+          "disable_stale_while_updating": false
+        }
+      },
+      "enabled": true
+    }
+  ]
+}
